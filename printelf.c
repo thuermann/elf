@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.15 2002/06/28 12:57:30 urs Exp $
+ * $Id: printelf.c,v 1.16 2002/06/28 12:57:40 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -17,6 +17,8 @@
 #include <elf.h>
 
 char *section_type_name(unsigned int type);
+
+Elf32_Off addr2offset(Elf32_Addr addr);
 
 /* MSB/LSB conversion routines */
 
@@ -144,6 +146,35 @@ char *reloc_types_SPARC[] = {
 
 char **reloc_type;
 int  nrtypes;
+
+char *tag_name[] = {
+    "NULL",
+    "NEEDED",
+    "PLTRELSZ",
+    "PLTGOT",
+    "HASH",
+    "STRTAB",
+    "SYMTAB",
+    "RELA",
+    "RELASZ",
+    "RELAENT",
+    "STRSZ",
+    "SYMENT",
+    "INIT",
+    "FINI",
+    "SONAME",
+    "RPATH",
+    "SYMBOLIC",
+    "REL",
+    "RELSZ",
+    "RELENT",
+    "PLTREL",
+    "DEBUG",
+    "TEXTREL",
+    "JMPREL",
+};
+#define NTAGS ASIZE(tag_name)
+
 
 
 void usage(char *name)
@@ -330,11 +361,17 @@ dump_section(Elf32_Ehdr *e, int section)
 	dump_strtab(e, shp);
 	break;
     case SHT_SYMTAB:
+    case SHT_DYNSYM:
 	dump_symtab(e, shp);
 	break;
     case SHT_REL:
     case SHT_RELA:
 	dump_relocation(e, shp);
+	break;
+    case SHT_DYNAMIC:
+	dump_dynamic(e, shp);
+	break;
+    case SHT_HASH:
 	break;
     default:
 	dump_other(e, shp);
@@ -430,6 +467,60 @@ dump_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	printf("%4d: \"%s\"\n", p - start, p);
 }
 
+dump_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
+{
+    Elf32_Dyn *p, *dyn = (Elf32_Dyn*)((char*)e + shp->sh_offset);
+    int ndyns = shp->sh_size / shp->sh_entsize;
+    char *strtab      = NULL;
+    Elf32_Sym *symtab = NULL;
+
+    for (p = dyn; p < dyn + ndyns; p++) {
+	switch (p->d_tag) {
+	case DT_SYMTAB:
+	    symtab = (Elf32_Sym*)((char*)e + addr2offset(p->d_un.d_ptr));
+	    break;
+	case DT_STRTAB:
+	    strtab = (char*)e + addr2offset(p->d_un.d_ptr);
+	    break;
+	}
+    }
+    if (!symtab || !strtab) {
+	fprintf(stderr,
+		"No DT_SYMTAB or DT_STRTAB entry in DYNAMIC section\n");
+	return;
+    }
+    for (p = dyn; p < dyn + ndyns; p++) {
+	int tag = p->d_tag;
+	char *tagname = tag < NTAGS ? tag_name[tag] : "?";
+	switch (tag) {
+	case DT_NEEDED:
+	case DT_SONAME:
+	case DT_RPATH:
+	    printf("%-8s  %d (0x%08x)\n", tagname, p->d_un.d_val, strtab);
+	    break;
+	case DT_PLTRELSZ:
+	case DT_RELASZ:
+	case DT_RELAENT:
+	case DT_STRSZ:
+	case DT_SYMENT:
+	    printf("%-8s  %d\n", tagname, p->d_un.d_val);
+	    break;
+	case DT_PLTGOT:
+	case DT_RELA:
+	case DT_HASH:
+	case DT_SYMTAB:
+	case DT_STRTAB:
+	case DT_JMPREL:
+	case DT_DEBUG:
+	    printf("%-8s  %08x\n", tagname, p->d_un.d_ptr);
+	    break;
+	default:
+	    printf("%-8s  ?\n", tagname);
+	    break;
+	}
+    }
+}
+
 dump_other(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     unsigned char *p, *start = (unsigned char*)e + shp->sh_offset;
@@ -493,6 +584,11 @@ print_program_header_table(Elf32_Ehdr *e)
     }
 }
 
+
+Elf32_Off addr2offset(Elf32_Addr addr)
+{
+    return addr;
+}
 
 void swap4(unsigned char *p)
 {
