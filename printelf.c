@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.12 2000/11/20 07:17:39 urs Exp $
+ * $Id: printelf.c,v 1.13 2000/11/20 07:17:49 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -259,12 +259,12 @@ print_section_header_table(Elf32_Ehdr *e)
     int section;
 
     printf("Section Header Table\n"
-	   " # Name             Type       Link Info Address     "
-	   "Offset Size Align\n");
+	   " #  Name              Type       Link Info Address   "
+	   "Offset  Size    Align\n");
 
     for (section = 0; section < e->e_shnum; section++) {
 	Elf32_Shdr *shp = section_header(e, section);
-	printf("%2d %-16s %-10s  %2d   %2d  0x%08x  %06x %4d %2d\n",
+	printf("%2d  %-16s  %-10s  %2d   %2d  %08x  %06x  %06x  %2d\n",
 	       section, section_name(e, section),
 	       section_type_name(shp->sh_type),
 	       shp->sh_link, shp->sh_info, shp->sh_addr,
@@ -354,10 +354,11 @@ dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
     switch (shp->sh_type) {
     case SHT_REL: {
 	Elf32_Rel *p, *rel = (Elf32_Rel*)((char*)e + shp->sh_offset);
+	printf("Address   Type            Symbol\n");
 	for (p = rel; p < rel + nrels; p++) {
 	    int sym  = ELF32_R_SYM(p->r_info);
 	    int type = ELF32_R_TYPE(p->r_info);
-	    printf("  0x%08x  %-14s  %2d(%s)\n",
+	    printf("%08x  %-14s  %2d(%s)\n",
 		   p->r_offset,
 		   type < nrtypes ? reloc_type[type] : "?",
 		   sym,
@@ -368,11 +369,11 @@ dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
     break;
     case SHT_RELA: {
 	Elf32_Rela *p, *rel = (Elf32_Rela*)((char*)e + shp->sh_offset);
-	printf("%d\n", nrels);
+	printf("Address   Type            Addend    Symbol\n");
 	for (p = rel; p < rel + nrels; p++) {
 	    int sym  = ELF32_R_SYM(p->r_info);
 	    int type = ELF32_R_TYPE(p->r_info);
-	    printf("  0x%08x  %-14s  0x%08x  %2d(%s)\n",
+	    printf("%08x  %-14s  %08x  %2d(%s)\n",
 		   p->r_offset,
 		   type < nrtypes ? reloc_type[type] : "?",
 		   p->r_addend,
