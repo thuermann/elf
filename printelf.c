@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.4 2000/11/02 20:14:20 urs Exp $
+ * $Id: printelf.c,v 1.5 2000/11/02 20:14:30 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -23,8 +23,6 @@ void conv_elfheader(Elf32_Ehdr *e);
 void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp);
 void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp);
 void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
-
-Elf32_Ehdr *elf_header;
 
 #define section_header(e,s) ((Elf32_Shdr*)((char*)(e) + (e)->e_shoff) + (s))
 
@@ -134,6 +132,7 @@ print_file(char *filename)
     void *buf;
     int size;
     int i;
+    Elf32_Ehdr *elf_header;
 
     if ((fd = open(filename, O_RDONLY)) < 0) {
 	perror(filename);
