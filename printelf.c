@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.7 2000/11/02 20:14:50 urs Exp $
+ * $Id: printelf.c,v 1.8 2000/11/02 20:15:00 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -98,6 +98,39 @@ char *machine_name[] = {
 };
 #define NMTYPES (sizeof(machine_name)/sizeof(*machine_name))
 
+char *reloc_types_386[] = {
+    "386_NONE",
+    "386_32",
+    "386_PC32",
+    "386_GOT32",
+    "386_PLT32",
+    "386_COPY",
+    "386_GLOB_DAT",
+    "386_JMP_SLOT",
+    "386_RELATIVE",
+    "386_GOTOFF",
+    "386_GOTPC",
+};
+
+char *reloc_types_SPARC[] = {
+    "?",
+    "?",
+    "?",
+    "?",
+    "?",
+    "?",
+    "?",
+    "SPARC_WDISP30",
+    "?",
+    "SPARC_HI22",
+    "?",
+    "?",
+    "SPARC_LO10",
+};
+
+char **reloc_type;
+int  nrtypes;
+
 
 void usage(char *name)
 {
@@ -160,6 +193,21 @@ print_file(char *filename)
     elf_header = buf;
 
     conv(elf_header);
+
+    switch (elf_header->e_machine) {
+    case EM_386:
+	reloc_type = reloc_types_386;
+	nrtypes    = sizeof(reloc_types_386)/sizeof(*reloc_types_386);
+	break;
+    case EM_SPARC:
+	reloc_type = reloc_types_SPARC;
+	nrtypes    = sizeof(reloc_types_SPARC)/sizeof(*reloc_types_SPARC);
+	break;
+    default:
+	reloc_type = NULL;
+	nrtypes    = 0;
+	break;
+    }
 
     print_elf_header(elf_header);
 
@@ -293,20 +341,43 @@ dump_symtab(Elf32_Ehdr *e, int section)
 dump_relocation(Elf32_Ehdr *e, int section)
 {
     Elf32_Shdr *shp = section_header(e, section);
-    Elf32_Rel *p, *rel = (Elf32_Rel*)((char*)e + shp->sh_offset);
     Elf32_Shdr *symtabh = section_header(e, shp->sh_link);
     Elf32_Sym *symtab = (Elf32_Sym*)((char*)e + symtabh->sh_offset);
     char *strtab = (char*)e + section_header(e, symtabh->sh_link)->sh_offset;
     int nrels = shp->sh_size / shp->sh_entsize;
+    int type = shp->sh_type;
 
-    for (p = rel; p < rel + nrels; p++) {
-	int sym = ELF32_R_SYM(p->r_info);
-	printf("  0x%08x %2d %2d(%s)\n",
-	       p->r_offset,
-	       ELF32_R_TYPE(p->r_info),
-	       sym,
-	       sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
-	    );
+    switch (shp->sh_type) {
+    case SHT_REL: {
+	Elf32_Rel *p, *rel = (Elf32_Rel*)((char*)e + shp->sh_offset);
+	for (p = rel; p < rel + nrels; p++) {
+	    int sym  = ELF32_R_SYM(p->r_info);
+	    int type = ELF32_R_TYPE(p->r_info);
+	    printf("  0x%08x  %-14s  %2d(%s)\n",
+		   p->r_offset,
+		   type < nrtypes ? reloc_type[type] : "?",
+		   sym,
+		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
+		);
+	}
+    }
+    break;
+    case SHT_RELA: {
+	Elf32_Rela *p, *rel = (Elf32_Rela*)((char*)e + shp->sh_offset);
+	printf("%d\n", nrels);
+	for (p = rel; p < rel + nrels; p++) {
+	    int sym  = ELF32_R_SYM(p->r_info);
+	    int type = ELF32_R_TYPE(p->r_info);
+	    printf("  0x%08x  %-14s  0x%08x  %2d(%s)\n",
+		   p->r_offset,
+		   type < nrtypes ? reloc_type[type] : "?",
+		   p->r_addend,
+		   sym,
+		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
+		);
+	}
+    }
+    break;
     }
 }
 
