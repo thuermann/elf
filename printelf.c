@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.3 2000/11/02 20:14:10 urs Exp $
+ * $Id: printelf.c,v 1.4 2000/11/02 20:14:20 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -102,12 +102,12 @@ char *machine_name[] = {
 };
 
 
-usage(char *name)
+void usage(char *name)
 {
     fprintf(stderr, "Usage: %s [-hv] file...\n", name);
 }
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     int c;
 
