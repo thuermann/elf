@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.11 2000/11/02 20:15:30 urs Exp $
+ * $Id: printelf.c,v 1.12 2000/11/20 07:17:39 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -26,6 +26,9 @@ void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp);
 void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp);
 void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
 
+
+#define ASIZE(a) (sizeof(a)/sizeof(*a))
+
 char *section_type_names[] = {
     "NULL",
     "PROGBITS",
@@ -41,7 +44,7 @@ char *section_type_names[] = {
     "DYNSYM",
     "NUM",
 };
-#define NSTYPES (sizeof(section_type_names)/sizeof(*section_type_names))
+#define NSTYPES ASIZE(section_type_names)
 
 char *elf_file_type[] = {
     "NONE",
@@ -50,7 +53,7 @@ char *elf_file_type[] = {
     "DYN",
     "CORE",
 };
-#define NFTYPES (sizeof(elf_file_type)/sizeof(*elf_file_type))
+#define NFTYPES ASIZE(elf_file_type)
 
 char *machine_name[] = {
     "NONE",         /*   0  No machine */
@@ -96,7 +99,7 @@ char *machine_name[] = {
     "COLDFIRE",     /*  52  Motorola Coldfire */
     "68HC12",       /*  53  Motorola M68HC12 */
 };
-#define NMTYPES (sizeof(machine_name)/sizeof(*machine_name))
+#define NMTYPES ASIZE(machine_name)
 
 char *reloc_types_386[] = {
     "386_NONE",
@@ -201,11 +204,11 @@ print_file(char *filename)
     switch (elf_header->e_machine) {
     case EM_386:
 	reloc_type = reloc_types_386;
-	nrtypes    = sizeof(reloc_types_386)/sizeof(*reloc_types_386);
+	nrtypes    = ASIZE(reloc_types_386);
 	break;
     case EM_SPARC:
 	reloc_type = reloc_types_SPARC;
-	nrtypes    = sizeof(reloc_types_SPARC)/sizeof(*reloc_types_SPARC);
+	nrtypes    = ASIZE(reloc_types_SPARC);
 	break;
     default:
 	reloc_type = NULL;
