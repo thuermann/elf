@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.10 2000/11/02 20:15:20 urs Exp $
+ * $Id: printelf.c,v 1.11 2000/11/02 20:15:30 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -227,12 +227,13 @@ print_file(char *filename)
 
 print_elf_header(Elf32_Ehdr *e)
 {
-    printf("ELF type: %s, version: %d, machine: %s, "
-	   "#sections: %d, #segments: %d\n\n",
+    printf("ELF Header\n  Type:      %s\n  Machine:   %s\n  Version:   %d\n"
+	   "  Entry:     0x%08x\n  Flags:     0x%x\n"
+	   "  #Sections: %d\n  #Segments: %d\n  Shstrndx:  %d\n\n",
 	   e->e_type    < NFTYPES ? elf_file_type[e->e_type]   : "?",
-	   e->e_version,
 	   e->e_machine < NMTYPES ? machine_name[e->e_machine] : "?",
-	   e->e_shnum, e->e_phnum);
+	   e->e_version, e->e_entry, e->e_flags,
+	   e->e_shnum, e->e_phnum, e->e_shstrndx);
 }
 
 Elf32_Shdr *section_header(Elf32_Ehdr *e, int s)
@@ -254,11 +255,13 @@ print_section_header_table(Elf32_Ehdr *e)
 {
     int section;
 
-    printf(" # Name       Type     Link Info Address    Offset Size Align\n");
+    printf("Section Header Table\n"
+	   " # Name             Type       Link Info Address     "
+	   "Offset Size Align\n");
 
     for (section = 0; section < e->e_shnum; section++) {
 	Elf32_Shdr *shp = section_header(e, section);
-	printf("%2d %-10s %-8s  %2d   %2d  0x%08x  %05x %4d %2d\n",
+	printf("%2d %-16s %-10s  %2d   %2d  0x%08x  %06x %4d %2d\n",
 	       section, section_name(e, section),
 	       section_type_name(shp->sh_type),
 	       shp->sh_link, shp->sh_info, shp->sh_addr,
@@ -280,7 +283,7 @@ dump_section(Elf32_Ehdr *e, int section)
     if (shp->sh_size == 0)
 	return;
 
-    printf("section: %d  %-10s %-8s %2d %2d 0x%08x %4d\n",
+    printf("section: %d  %-10s %-10s %2d %2d 0x%08x %4d\n",
 	   section, section_name(e, section), section_type_name(shp->sh_type),
 	   shp->sh_link, shp->sh_info, shp->sh_addr, shp->sh_size);
 
