@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.8 2000/11/02 20:15:00 urs Exp $
+ * $Id: printelf.c,v 1.9 2000/11/02 20:15:10 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -286,17 +286,17 @@ dump_section(Elf32_Ehdr *e, int section)
 
     switch (shp->sh_type) {
     case SHT_STRTAB:
-	dump_strtab(e, section);
+	dump_strtab(e, shp);
 	break;
     case SHT_SYMTAB:
-	dump_symtab(e, section);
+	dump_symtab(e, shp);
 	break;
     case SHT_REL:
     case SHT_RELA:
-	dump_relocation(e, section);
+	dump_relocation(e, shp);
 	break;
     default:
-	dump_other(e, section);
+	dump_other(e, shp);
 	break;
     }
 }
@@ -315,9 +315,8 @@ char *symbol_type[] = {
     "FILE",
 };
 
-dump_symtab(Elf32_Ehdr *e, int section)
+dump_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    Elf32_Shdr *shp = section_header(e, section);
     Elf32_Sym *p, *symtab = (Elf32_Sym*)((char*)e + shp->sh_offset);
     int link = shp->sh_link;
     char *strtab = (char*)e + section_header(e, shp->sh_link)->sh_offset;
@@ -338,9 +337,8 @@ dump_symtab(Elf32_Ehdr *e, int section)
     }
 }
 
-dump_relocation(Elf32_Ehdr *e, int section)
+dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    Elf32_Shdr *shp = section_header(e, section);
     Elf32_Shdr *symtabh = section_header(e, shp->sh_link);
     Elf32_Sym *symtab = (Elf32_Sym*)((char*)e + symtabh->sh_offset);
     char *strtab = (char*)e + section_header(e, symtabh->sh_link)->sh_offset;
@@ -381,9 +379,8 @@ dump_relocation(Elf32_Ehdr *e, int section)
     }
 }
 
-dump_strtab(Elf32_Ehdr *e, int section)
+dump_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    Elf32_Shdr *shp = section_header(e, section);
     char *p, *start = (char*)e + shp->sh_offset;
     int size = shp->sh_size;
 
@@ -391,9 +388,8 @@ dump_strtab(Elf32_Ehdr *e, int section)
 	printf("%4d: \"%s\"\n", p - start, p);
 }
 
-dump_other(Elf32_Ehdr *e, int section)
+dump_other(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    Elf32_Shdr *shp = section_header(e, section);
     unsigned char *p, *start = (unsigned char*)e + shp->sh_offset;
     int size = shp->sh_size;
     int nbytes, i;
