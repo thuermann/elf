@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.16 2002/06/28 12:57:40 urs Exp $
+ * $Id: printelf.c,v 1.17 2002/09/15 09:53:52 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -401,7 +401,7 @@ dump_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
     int nsyms = shp->sh_size / shp->sh_entsize;
 
     for (p = symtab; p < symtab + nsyms; p++) {
-	printf("%4d: %-20s 0x%08x %4d %-6s %-7s %-10s\n",
+	printf("%4d: %-24s 0x%08x %4d %-6s %-7s %-10s\n",
 	       p - symtab,
 	       strtab + p->st_name,
 	       p->st_value, p->st_size,
