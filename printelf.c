@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.14 2000/11/20 07:17:59 urs Exp $
+ * $Id: printelf.c,v 1.15 2002/06/28 12:57:30 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -244,13 +244,23 @@ print_file(char *filename)
 
 print_elf_header(Elf32_Ehdr *e)
 {
-    printf("ELF Header\n  Type:      %s\n  Machine:   %s\n  Version:   %d\n"
-	   "  Entry:     0x%08x\n  Flags:     0x%x\n"
-	   "  #Sections: %d\n  #Segments: %d\n  Shstrndx:  %d\n\n",
+    printf("ELF Header\n"
+	   "  Header Size: %d\n"
+	   "  Type:        %s\n"
+	   "  Machine:     %s\n"
+	   "  Version:     %d\n"
+	   "  Entry:       0x%08x\n"
+	   "  Flags:       0x%x\n"
+	   "  Sections:    %2d x %2d @ %08x\n"
+	   "  Segments:    %2d x %2d @ %08x\n"
+	   "  Shstrndx:    %d\n\n",
+	   e->e_ehsize,
 	   e->e_type    < NFTYPES ? elf_file_type[e->e_type]   : "?",
 	   e->e_machine < NMTYPES ? machine_name[e->e_machine] : "?",
 	   e->e_version, e->e_entry, e->e_flags,
-	   e->e_shnum, e->e_phnum, e->e_shstrndx);
+	   e->e_shnum, e->e_shentsize, e->e_shoff,
+	   e->e_phnum, e->e_phentsize, e->e_phoff,
+	   e->e_shstrndx);
 }
 
 Elf32_Shdr *section_header(Elf32_Ehdr *e, int s)
@@ -282,16 +292,18 @@ print_section_header_table(Elf32_Ehdr *e)
     int section;
 
     printf("Section Header Table\n"
-	   " #  Name              Type       Link Info Address   "
-	   "Offset  Size    Align\n");
+	   " #  Type      "
+	   "Offset  Size    Address  Link Info Align Flags Name\n");
 
     for (section = 0; section < e->e_shnum; section++) {
 	Elf32_Shdr *shp = section_header(e, section);
-	printf("%2d  %-16s  %-10s  %2d   %2d  %08x  %06x  %06x  %2d\n",
-	       section, section_name(e, section),
-	       section_type_name(shp->sh_type),
-	       shp->sh_link, shp->sh_info, shp->sh_addr,
-	       shp->sh_offset, shp->sh_size, shp->sh_addralign);
+	printf("%2d  %-8s  %06x  %06x  %08x  %2d   %2d   %2d   %04x  %-16s\n",
+	       section, section_type_name(shp->sh_type),
+	       shp->sh_offset, shp->sh_size,
+	       shp->sh_addr, shp->sh_link, shp->sh_info,
+	       shp->sh_addralign, shp->sh_flags,
+	       section_name(e, section)
+	    );
     }
 }
 
@@ -468,12 +480,12 @@ print_program_header_table(Elf32_Ehdr *e)
     int prg_header;
 
     printf("Program Header Table\n"
-	   "Type     Offset  Filesz  Vaddr     Paddr     Memsz   "
+	   "    Type      Offset  Filesz  Vaddr     Paddr     Memsz   "
 	   "Align   Flags\n");
 
     for (prg_header = 0; prg_header < e->e_phnum; prg_header++) {
 	Elf32_Phdr *php = program_header(e, prg_header);
-	printf("%-7s  %06x  %06x  %08x  %08x  %06x  %06x  %06x\n",
+	printf("    %-8s  %06x  %06x  %08x  %08x  %06x  %06x  %06x\n",
 	       ph_type_name(php->p_type),
 	       php->p_offset, php->p_filesz,
 	       php->p_vaddr, php->p_paddr, php->p_memsz,
