@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.2 2000/11/02 20:14:00 urs Exp $
+ * $Id: printelf.c,v 1.3 2000/11/02 20:14:10 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -140,19 +140,19 @@ print_file(char *filename)
 	return;
     }
     if (fstat(fd, &statbuf) < 0) {
-	perror("stat");
+	perror(filename);
 	close(fd);
 	return;
     }
 
     size = statbuf.st_size;
     if (!(buf = malloc(size))) {
-	fprintf(stderr, "Insufficient memory.\n");
+	fprintf(stderr, "%s: Insufficient memory.\n", filename);
 	close(fd);
 	return;
     }
     if (read(fd, buf, size) < 0) {
-	perror("read");
+	perror(filename);
 	free(buf);
 	close(fd);
 	return;
