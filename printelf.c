@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.5 2000/11/02 20:14:30 urs Exp $
+ * $Id: printelf.c,v 1.6 2000/11/02 20:14:40 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -23,12 +23,6 @@ void conv_elfheader(Elf32_Ehdr *e);
 void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp);
 void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp);
 void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
-
-#define section_header(e,s) ((Elf32_Shdr*)((char*)(e) + (e)->e_shoff) + (s))
-
-#define section_name(e,s) \
-	((char*)(e) + section_header(e, e->e_shstrndx)->sh_offset \
-		    + section_header(e,s)->sh_name)
 
 char *section_type_name[] = {
     "NULL",
@@ -162,12 +156,7 @@ print_file(char *filename)
 
     conv(elf_header);
 
-    printf("ELF type: %s, version: %d, machine: %s, "
-	   "#sections: %d, #segments: %d\n\n",
-	   elf_file_type[elf_header->e_type],
-	   elf_header->e_version,
-	   machine_name[elf_header->e_machine],
-	   elf_header->e_shnum, elf_header->e_phnum);
+    print_elf_header(elf_header);
 
     print_section_header_table(elf_header);
     putchar('\n');
@@ -177,6 +166,31 @@ print_file(char *filename)
     }
 
     free(buf);
+}
+
+print_elf_header(Elf32_Ehdr *e)
+{
+    printf("ELF type: %s, version: %d, machine: %s, "
+	   "#sections: %d, #segments: %d\n\n",
+	   elf_file_type[e->e_type],
+	   e->e_version,
+	   machine_name[e->e_machine],
+	   e->e_shnum, e->e_phnum);
+}
+
+Elf32_Shdr *section_header(Elf32_Ehdr *e, int s)
+{
+    if (s >= e->e_shnum) {
+	fprintf(stderr, "Illegal section number %d\n", s);
+	exit(1);
+    }
+    return (Elf32_Shdr*)((char*)e + e->e_shoff) + s;
+}
+
+char *section_name(Elf32_Ehdr *e, int s)
+{
+    return (char*)e + section_header(e, e->e_shstrndx)->sh_offset
+	+ section_header(e, s)->sh_name;
 }
 
 print_section_header_table(Elf32_Ehdr *e)
