@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.13 2000/11/20 07:17:49 urs Exp $
+ * $Id: printelf.c,v 1.14 2000/11/20 07:17:59 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -45,6 +45,17 @@ char *section_type_names[] = {
     "NUM",
 };
 #define NSTYPES ASIZE(section_type_names)
+
+char *program_header_type_names[] = {
+    "NULL",
+    "LOAD",
+    "DYNAMIC",
+    "INTERP",
+    "NOTE",
+    "SHLIB",
+    "PHDR",
+};
+#define NPTYPES ASIZE(program_header_type_names)
 
 char *elf_file_type[] = {
     "NONE",
@@ -218,6 +229,9 @@ print_file(char *filename)
 
     print_elf_header(elf_header);
 
+    print_program_header_table(elf_header);
+    putchar('\n');
+
     print_section_header_table(elf_header);
     putchar('\n');
     for (i = 0; i < elf_header->e_shnum; i++) {
@@ -252,6 +266,15 @@ char *section_name(Elf32_Ehdr *e, int s)
 {
     return (char*)e + section_header(e, e->e_shstrndx)->sh_offset
 	+ section_header(e, s)->sh_name;
+}
+
+Elf32_Phdr *program_header(Elf32_Ehdr *e, int p)
+{
+    if (p >= e->e_phnum) {
+	fprintf(stderr, "Illegal program header number %d\n", p);
+	exit(1);
+    }
+    return (Elf32_Phdr*)((char*)e + e->e_phoff) + p;
 }
 
 print_section_header_table(Elf32_Ehdr *e)
@@ -427,6 +450,37 @@ char *section_type_name(unsigned int type)
 	return s;
     }
 }
+
+char *ph_type_name(unsigned int type)
+{
+    static char s[16];
+
+    if (type < NPTYPES)
+	return program_header_type_names[type];
+    else {
+	sprintf(s, "0x%08x", type);
+	return s;
+    }
+}
+
+print_program_header_table(Elf32_Ehdr *e)
+{
+    int prg_header;
+
+    printf("Program Header Table\n"
+	   "Type     Offset  Filesz  Vaddr     Paddr     Memsz   "
+	   "Align   Flags\n");
+
+    for (prg_header = 0; prg_header < e->e_phnum; prg_header++) {
+	Elf32_Phdr *php = program_header(e, prg_header);
+	printf("%-7s  %06x  %06x  %08x  %08x  %06x  %06x  %06x\n",
+	       ph_type_name(php->p_type),
+	       php->p_offset, php->p_filesz,
+	       php->p_vaddr, php->p_paddr, php->p_memsz,
+	       php->p_align, php->p_flags);
+    }
+}
+
 
 void swap4(unsigned char *p)
 {
