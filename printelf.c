@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.1 2000/03/01 16:40:02 urs Exp $
+ * $Id: printelf.c,v 1.2 2000/11/02 20:14:00 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -15,6 +15,14 @@
 #include <sys/stat.h>
 
 #include <elf.h>
+
+/* MSB/LSB conversion routines */
+
+void conv(Elf32_Ehdr *e);
+void conv_elfheader(Elf32_Ehdr *e);
+void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp);
+void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp);
+void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
 
 Elf32_Ehdr *elf_header;
 
@@ -152,6 +160,8 @@ print_file(char *filename)
     close(fd);
 
     elf_header = buf;
+
+    conv(elf_header);
 
     printf("ELF type: %s, version: %d, machine: %s, "
 	   "#sections: %d, #segments: %d\n\n",
@@ -311,5 +321,134 @@ dump_other(Elf32_Ehdr *e, int section)
 	for (i = 0; i < nbytes; i++)
 	    putchar(isprint(p[i]) ? p[i] : '.');
 	putchar('\n');
+    }
+}
+
+void swap4(unsigned char *p)
+{
+    unsigned char c;
+    c = p[0], p[0] = p[3], p[3] = c;
+    c = p[1], p[1] = p[2], p[2] = c;
+}
+
+void swap2(unsigned char *p)
+{
+    unsigned char c;
+    c = p[0], p[0] = p[1], p[1] = c;
+}
+
+void lsbtoh(unsigned int *p)
+{
+}
+
+void msbtoh(unsigned int *p)
+{
+    swap4((unsigned char *)p);
+}
+
+void lsbtohs(unsigned short *p)
+{
+}
+
+void msbtohs(unsigned short *p)
+{
+    swap2((unsigned char *)p);
+}
+
+void (*conv_s)(unsigned short *), (*conv_l)(unsigned int *);
+
+void conv(Elf32_Ehdr *e)
+{
+    int i;
+
+    if (e->e_ident[EI_DATA] == ELFDATA2LSB) {
+	conv_s = lsbtohs;
+	conv_l = lsbtoh;
+    } else if (e->e_ident[EI_DATA] == ELFDATA2MSB) {
+	conv_s = msbtohs;
+	conv_l = msbtoh;
+    }
+    conv_elfheader(e);
+
+    for (i = 0; i < e->e_shnum; i++)
+	conv_sectionheader(e, section_header(e, i));
+}
+
+void conv_elfheader(Elf32_Ehdr *e)
+{
+    conv_s(&e->e_type);
+    conv_s(&e->e_machine);
+    conv_l(&e->e_version);
+    conv_l(&e->e_entry);
+    conv_l(&e->e_phoff);
+    conv_l(&e->e_shoff);
+    conv_l(&e->e_flags);
+    conv_s(&e->e_ehsize);
+    conv_s(&e->e_phentsize);
+    conv_s(&e->e_phnum);
+    conv_s(&e->e_shentsize);
+    conv_s(&e->e_shnum);
+    conv_s(&e->e_shstrndx);
+}
+
+void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp)
+{
+    conv_l(&shp->sh_name);
+    conv_l(&shp->sh_type);
+    conv_l(&shp->sh_flags);
+    conv_l(&shp->sh_addr);
+    conv_l(&shp->sh_offset);
+    conv_l(&shp->sh_size);
+    conv_l(&shp->sh_link);
+    conv_l(&shp->sh_info);
+    conv_l(&shp->sh_addralign);
+    conv_l(&shp->sh_entsize);
+
+    switch (shp->sh_type) {
+    case SHT_SYMTAB:
+	conv_symboltable(e, shp);
+	break;
+    case SHT_REL:
+    case SHT_RELA:
+	conv_relocation(e, shp);
+	break;
+    }
+}
+
+void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp)
+{
+    Elf32_Sym *p, *symtab = (Elf32_Sym*)((char*)e + shp->sh_offset);
+    int nsyms = shp->sh_size / shp->sh_entsize;
+
+    for (p = symtab; p < symtab + nsyms; p++) {
+	conv_l(&p->st_name);
+	conv_l(&p->st_value);
+	conv_l(&p->st_size);
+	conv_s(&p->st_shndx);
+    }
+}
+
+void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
+{
+    int nrels = shp->sh_size / shp->sh_entsize;
+
+    switch (shp->sh_type) {
+    case SHT_REL: {
+	Elf32_Rel *p, *rel = (Elf32_Rel*)((char*)e + shp->sh_offset);
+	for (p = rel; p < rel + nrels; p++) {
+	    conv_l(&p->r_offset);
+	    conv_l(&p->r_info);
+	}
+    }
+    break;
+    case SHT_RELA: {
+	Elf32_Rela *p, *rel = (Elf32_Rela*)((char*)e + shp->sh_offset);
+	for (p = rel; p < rel + nrels; p++) {
+	    conv_l(&p->r_offset);
+	    conv_l(&p->r_info);
+	    conv_l(&p->r_addend);
+	}
+    }
+    break;
     }
 }
