@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.9 2000/11/02 20:15:10 urs Exp $
+ * $Id: printelf.c,v 1.10 2000/11/02 20:15:20 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -166,6 +166,8 @@ print_file(char *filename)
     int i;
     Elf32_Ehdr *elf_header;
 
+    /* Read the file to memory */
+
     if ((fd = open(filename, O_RDONLY)) < 0) {
 	perror(filename);
 	return;
@@ -189,6 +191,8 @@ print_file(char *filename)
 	return;
     }
     close(fd);
+
+    /* and print dump it stdout. */
 
     elf_header = buf;
 
@@ -257,10 +261,8 @@ print_section_header_table(Elf32_Ehdr *e)
 	printf("%2d %-10s %-8s  %2d   %2d  0x%08x  %05x %4d %2d\n",
 	       section, section_name(e, section),
 	       section_type_name(shp->sh_type),
-	       shp->sh_link, shp->sh_info,
-	       shp->sh_addr,
-	       shp->sh_offset, shp->sh_size,
-	       shp->sh_addralign);
+	       shp->sh_link, shp->sh_info, shp->sh_addr,
+	       shp->sh_offset, shp->sh_size, shp->sh_addralign);
     }
 }
 
@@ -279,10 +281,8 @@ dump_section(Elf32_Ehdr *e, int section)
 	return;
 
     printf("section: %d  %-10s %-8s %2d %2d 0x%08x %4d\n",
-	   section, section_name(e, section),
-	   section_type_name(shp->sh_type),
-	   shp->sh_link, shp->sh_info,
-	   shp->sh_addr, shp->sh_size);
+	   section, section_name(e, section), section_type_name(shp->sh_type),
+	   shp->sh_link, shp->sh_info, shp->sh_addr, shp->sh_size);
 
     switch (shp->sh_type) {
     case SHT_STRTAB:
