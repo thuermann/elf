@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.6 2000/11/02 20:14:40 urs Exp $
+ * $Id: printelf.c,v 1.7 2000/11/02 20:14:50 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -16,6 +16,8 @@
 
 #include <elf.h>
 
+char *section_type_name(unsigned int type);
+
 /* MSB/LSB conversion routines */
 
 void conv(Elf32_Ehdr *e);
@@ -24,7 +26,7 @@ void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp);
 void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp);
 void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
 
-char *section_type_name[] = {
+char *section_type_names[] = {
     "NULL",
     "PROGBITS",
     "SYMTAB",
@@ -39,6 +41,7 @@ char *section_type_name[] = {
     "DYNSYM",
     "NUM",
 };
+#define NSTYPES (sizeof(section_type_names)/sizeof(*section_type_names))
 
 char *elf_file_type[] = {
     "NONE",
@@ -47,6 +50,7 @@ char *elf_file_type[] = {
     "DYN",
     "CORE",
 };
+#define NFTYPES (sizeof(elf_file_type)/sizeof(*elf_file_type))
 
 char *machine_name[] = {
     "NONE",         /*   0  No machine */
@@ -92,6 +96,7 @@ char *machine_name[] = {
     "COLDFIRE",     /*  52  Motorola Coldfire */
     "68HC12",       /*  53  Motorola M68HC12 */
 };
+#define NMTYPES (sizeof(machine_name)/sizeof(*machine_name))
 
 
 void usage(char *name)
@@ -172,9 +177,9 @@ print_elf_header(Elf32_Ehdr *e)
 {
     printf("ELF type: %s, version: %d, machine: %s, "
 	   "#sections: %d, #segments: %d\n\n",
-	   elf_file_type[e->e_type],
+	   e->e_type    < NFTYPES ? elf_file_type[e->e_type]   : "?",
 	   e->e_version,
-	   machine_name[e->e_machine],
+	   e->e_machine < NMTYPES ? machine_name[e->e_machine] : "?",
 	   e->e_shnum, e->e_phnum);
 }
 
@@ -203,7 +208,7 @@ print_section_header_table(Elf32_Ehdr *e)
 	Elf32_Shdr *shp = section_header(e, section);
 	printf("%2d %-10s %-8s  %2d   %2d  0x%08x  %05x %4d %2d\n",
 	       section, section_name(e, section),
-	       section_type_name[shp->sh_type],
+	       section_type_name(shp->sh_type),
 	       shp->sh_link, shp->sh_info,
 	       shp->sh_addr,
 	       shp->sh_offset, shp->sh_size,
@@ -227,7 +232,7 @@ dump_section(Elf32_Ehdr *e, int section)
 
     printf("section: %d  %-10s %-8s %2d %2d 0x%08x %4d\n",
 	   section, section_name(e, section),
-	   section_type_name[shp->sh_type],
+	   section_type_name(shp->sh_type),
 	   shp->sh_link, shp->sh_info,
 	   shp->sh_addr, shp->sh_size);
 
@@ -334,6 +339,18 @@ dump_other(Elf32_Ehdr *e, int section)
 	for (i = 0; i < nbytes; i++)
 	    putchar(isprint(p[i]) ? p[i] : '.');
 	putchar('\n');
+    }
+}
+
+char *section_type_name(unsigned int type)
+{
+    static char s[16];
+
+    if (type < NSTYPES)
+	return section_type_names[type];
+    else {
+	sprintf(s, "0x%08x", type);
+	return s;
     }
 }
 
