@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.20 2005/10/27 11:48:09 urs Exp $
+ * $Id: printelf.c,v 1.21 2005/10/27 11:48:19 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -110,18 +110,35 @@ static char *const machine_name[] = {
 };
 #define NMTYPES ASIZE(machine_name)
 
+#define R(s) [R_386_ ## s] = "386_" #s
 static char *const reloc_types_386[] = {
-    "386_NONE",     "386_32",     "386_PC32",     "386_GOT32",
-    "386_PLT32",    "386_COPY",   "386_GLOB_DAT", "386_JMP_SLOT",
-    "386_RELATIVE", "386_GOTOFF", "386_GOTPC",
+    R(NONE),     R(32),     R(PC32),     R(GOT32),
+    R(PLT32),    R(COPY),   R(GLOB_DAT), R(JMP_SLOT),
+    R(RELATIVE), R(GOTOFF), R(GOTPC),
 };
+#undef R
 
+#define R(s) [R_SPARC_ ## s] = "SPARC_" #s
 static char *const reloc_types_SPARC[] = {
-    "?",          "?",          "?", "?",
-    "?",          "?",          "?", "SPARC_WDISP30",
-    "?",          "SPARC_HI22", "?", "?",
-    "SPARC_LO10",
+    R(NONE),     R(8),        R(16),       R(32),
+    R(DISP8),    R(DISP16),   R(DISP32),   R(WDISP30),
+    R(WDISP22),  R(HI22),     R(22),       R(13),
+    R(LO10),     R(GOT10),    R(GOT13),    R(GOT22),
+    R(PC10),     R(PC22),     R(WPLT30),   R(COPY),
+    R(GLOB_DAT), R(JMP_SLOT), R(RELATIVE), R(UA32),
+
+    /* Additional Sparc64 relocs. */
+
+    R(PLT32),    R(HIPLT22),  R(LOPLT10),  R(PCPLT32),
+    R(PCPLT22),  R(PCPLT10),  R(10),       R(11),
+    R(64),       R(OLO10),    R(HH22),     R(HM10),
+    R(LM22),     R(PC_HH22),  R(PC_HM10),  R(PC_LM22),
+    R(WDISP16),  R(WDISP19),  R(7),        R(5),
+    R(6),        R(DISP64),   R(PLT64),    R(HIX22),
+    R(LOX10),    R(H44),      R(M44),      R(L44),
+    R(REGISTER), R(UA64),     R(UA16),
 };
+#undef R
 
 static char *const *reloc_type;
 static int  nrtypes;
@@ -388,7 +405,7 @@ static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	    int type = ELF32_R_TYPE(p->r_info);
 	    printf("%08x  %-14s  %2d(%s)\n",
 		   p->r_offset,
-		   type < nrtypes ? reloc_type[type] : "?",
+		   type < nrtypes && reloc_type[type] ? reloc_type[type] : "?",
 		   sym,
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
@@ -403,7 +420,7 @@ static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	    int type = ELF32_R_TYPE(p->r_info);
 	    printf("%08x  %-14s  %08x  %2d(%s)\n",
 		   p->r_offset,
-		   type < nrtypes ? reloc_type[type] : "?",
+		   type < nrtypes && reloc_type[type] ? reloc_type[type] : "?",
 		   p->r_addend,
 		   sym,
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
