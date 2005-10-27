@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.21 2005/10/27 11:48:19 urs Exp $
+ * $Id: printelf.c,v 1.22 2005/10/27 11:48:29 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -140,6 +140,35 @@ static char *const reloc_types_SPARC[] = {
 };
 #undef R
 
+#define R(s) [R_PPC_ ## s] = "PPC_" #s
+static char *const reloc_types_PPC[] = {
+    R(NONE),           R(ADDR32),          R(ADDR24),     R(ADDR16),
+    R(ADDR16_LO),      R(ADDR16_HI),       R(ADDR16_HA),  R(ADDR14),
+    R(ADDR14_BRTAKEN), R(ADDR14_BRNTAKEN), R(REL24),      R(REL14),
+    R(REL14_BRTAKEN),  R(REL14_BRNTAKEN),  R(GOT16),      R(GOT16_LO),
+    R(GOT16_HI),       R(GOT16_HA),        R(PLTREL24),   R(COPY),
+    R(GLOB_DAT),       R(JMP_SLOT),        R(RELATIVE),   R(LOCAL24PC),
+    R(UADDR32),        R(UADDR16),         R(REL32),      R(PLT32),
+    R(PLTREL32),       R(PLT16_LO),        R(PLT16_HI),   R(PLT16_HA),
+    R(SDAREL16),       R(SECTOFF),         R(SECTOFF_LO), R(SECTOFF_HI),
+    R(SECTOFF_HA),
+
+#define R_PPC_ADDR30 37
+    R(ADDR30),
+};
+#undef R
+
+#define R(s) [R_68K_ ## s] = "68K_" #s
+static char *const reloc_types_68K[] = {
+    R(NONE),     R(32),       R(16),       R(8),
+    R(PC32),     R(PC16),     R(PC8),      R(GOT32),
+    R(GOT16),    R(GOT8),     R(GOT32O),   R(GOT16O),
+    R(GOT8O),    R(PLT32),    R(PLT16),    R(PLT8),
+    R(PLT32O),   R(PLT16O),   R(PLT8O),    R(COPY),
+    R(GLOB_DAT), R(JMP_SLOT), R(RELATIVE),
+};
+#undef R
+
 static char *const *reloc_type;
 static int  nrtypes;
 
@@ -229,6 +258,14 @@ static void print_file(char *filename)
     case EM_SPARC:
 	reloc_type = reloc_types_SPARC;
 	nrtypes    = ASIZE(reloc_types_SPARC);
+	break;
+    case EM_PPC:
+	reloc_type = reloc_types_PPC;
+	nrtypes    = ASIZE(reloc_types_PPC);
+	break;
+    case EM_68K:
+	reloc_type = reloc_types_68K;
+	nrtypes    = ASIZE(reloc_types_68K);
 	break;
     default:
 	reloc_type = NULL;
