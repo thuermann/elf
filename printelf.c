@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.19 2005/10/27 11:47:59 urs Exp $
+ * $Id: printelf.c,v 1.20 2005/10/27 11:48:09 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -45,38 +45,21 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
 #define ASIZE(a) (sizeof(a)/sizeof(*a))
 
 static char *const section_type_names[] = {
-    "NULL",
-    "PROGBITS",
-    "SYMTAB",
-    "STRTAB",
-    "RELA",
-    "HASH",
-    "DYNAMIC",
-    "NOTE",
-    "NOBITS",
-    "REL",
-    "SHLIB",
-    "DYNSYM",
+    "NULL",   "PROGBITS", "SYMTAB",  "STRTAB",
+    "RELA",   "HASH",     "DYNAMIC", "NOTE",
+    "NOBITS", "REL",      "SHLIB",   "DYNSYM",
     "NUM",
 };
 #define NSTYPES ASIZE(section_type_names)
 
 static char *const program_header_type_names[] = {
-    "NULL",
-    "LOAD",
-    "DYNAMIC",
-    "INTERP",
-    "NOTE",
-    "SHLIB",
-    "PHDR",
+    "NULL",  "LOAD",   "DYNAMIC",  "INTERP",
+    "NOTE",  "SHLIB",  "PHDR",
 };
 #define NPTYPES ASIZE(program_header_type_names)
 
 static char *const elf_file_type[] = {
-    "NONE",
-    "REL",
-    "EXEC",
-    "DYN",
+    "NONE",  "REL",  "EXEC",  "DYN",
     "CORE",
 };
 #define NFTYPES ASIZE(elf_file_type)
@@ -128,32 +111,15 @@ static char *const machine_name[] = {
 #define NMTYPES ASIZE(machine_name)
 
 static char *const reloc_types_386[] = {
-    "386_NONE",
-    "386_32",
-    "386_PC32",
-    "386_GOT32",
-    "386_PLT32",
-    "386_COPY",
-    "386_GLOB_DAT",
-    "386_JMP_SLOT",
-    "386_RELATIVE",
-    "386_GOTOFF",
-    "386_GOTPC",
+    "386_NONE",     "386_32",     "386_PC32",     "386_GOT32",
+    "386_PLT32",    "386_COPY",   "386_GLOB_DAT", "386_JMP_SLOT",
+    "386_RELATIVE", "386_GOTOFF", "386_GOTPC",
 };
 
 static char *const reloc_types_SPARC[] = {
-    "?",
-    "?",
-    "?",
-    "?",
-    "?",
-    "?",
-    "?",
-    "SPARC_WDISP30",
-    "?",
-    "SPARC_HI22",
-    "?",
-    "?",
+    "?",          "?",          "?", "?",
+    "?",          "?",          "?", "SPARC_WDISP30",
+    "?",          "SPARC_HI22", "?", "?",
     "SPARC_LO10",
 };
 
@@ -161,30 +127,12 @@ static char *const *reloc_type;
 static int  nrtypes;
 
 static char *const tag_name[] = {
-    "NULL",
-    "NEEDED",
-    "PLTRELSZ",
-    "PLTGOT",
-    "HASH",
-    "STRTAB",
-    "SYMTAB",
-    "RELA",
-    "RELASZ",
-    "RELAENT",
-    "STRSZ",
-    "SYMENT",
-    "INIT",
-    "FINI",
-    "SONAME",
-    "RPATH",
-    "SYMBOLIC",
-    "REL",
-    "RELSZ",
-    "RELENT",
-    "PLTREL",
-    "DEBUG",
-    "TEXTREL",
-    "JMPREL",
+    "NULL",     "NEEDED",  "PLTRELSZ", "PLTGOT",
+    "HASH",     "STRTAB",  "SYMTAB",   "RELA",
+    "RELASZ",   "RELAENT", "STRSZ",    "SYMENT",
+    "INIT",     "FINI",    "SONAME",   "RPATH",
+    "SYMBOLIC", "REL",     "RELSZ",    "RELENT",
+    "PLTREL",   "DEBUG",   "TEXTREL",  "JMPREL",
 };
 #define NTAGS ASIZE(tag_name)
 
@@ -393,16 +341,11 @@ static void dump_section(Elf32_Ehdr *e, int section)
 }
 
 static char *const bind[] = {
-    "LOCAL",
-    "GLOBAL",
-    "WEAK",
+    "LOCAL", "GLOBAL", "WEAK",
 };
 
 static char *const symbol_type[] = {
-    "NOTYPE",
-    "OBJECT",
-    "FUNC",
-    "SECTION",
+    "NOTYPE", "OBJECT", "FUNC", "SECTION",
     "FILE",
 };
 
