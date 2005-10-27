@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.18 2005/10/27 11:47:49 urs Exp $
+ * $Id: printelf.c,v 1.19 2005/10/27 11:47:59 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -450,8 +450,8 @@ static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
 	}
+	break;
     }
-    break;
     case SHT_RELA: {
 	Elf32_Rela *p, *rel = (Elf32_Rela*)((char*)e + shp->sh_offset);
 	printf("Address   Type            Addend    Symbol\n");
@@ -466,8 +466,8 @@ static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
 	}
+	break;
     }
-    break;
     }
 }
 
@@ -718,8 +718,8 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	    conv_l(&p->r_offset);
 	    conv_l(&p->r_info);
 	}
+	break;
     }
-    break;
     case SHT_RELA: {
 	Elf32_Rela *p, *rel = (Elf32_Rela*)((char*)e + shp->sh_offset);
 	for (p = rel; p < rel + nrels; p++) {
@@ -727,7 +727,7 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	    conv_l(&p->r_info);
 	    conv_l(&p->r_addend);
 	}
+	break;
     }
-    break;
     }
 }
