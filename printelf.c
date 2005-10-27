@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.17 2002/09/15 09:53:52 urs Exp $
+ * $Id: printelf.c,v 1.18 2005/10/27 11:47:49 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -16,22 +16,35 @@
 
 #include <elf.h>
 
-char *section_type_name(unsigned int type);
+static void print_file(char *filename);
+static void print_elf_header(Elf32_Ehdr *e);
+static void print_program_header_table(Elf32_Ehdr *e);
+static void print_section_header_table(Elf32_Ehdr *e);
 
-Elf32_Off addr2offset(Elf32_Addr addr);
+static void dump_section(Elf32_Ehdr *e, int section);
+static void dump_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void dump_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void dump_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void dump_other(Elf32_Ehdr *e, Elf32_Shdr *shp);
+
+static char *section_type_name(unsigned int type);
+
+static Elf32_Off addr2offset(Elf32_Addr addr);
 
 /* MSB/LSB conversion routines */
 
-void conv(Elf32_Ehdr *e);
-void conv_elfheader(Elf32_Ehdr *e);
-void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp);
-void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp);
-void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void conv(Elf32_Ehdr *e);
+static void conv_elfheader(Elf32_Ehdr *e);
+static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
+
 
 
 #define ASIZE(a) (sizeof(a)/sizeof(*a))
 
-char *section_type_names[] = {
+static char *const section_type_names[] = {
     "NULL",
     "PROGBITS",
     "SYMTAB",
@@ -48,7 +61,7 @@ char *section_type_names[] = {
 };
 #define NSTYPES ASIZE(section_type_names)
 
-char *program_header_type_names[] = {
+static char *const program_header_type_names[] = {
     "NULL",
     "LOAD",
     "DYNAMIC",
@@ -59,7 +72,7 @@ char *program_header_type_names[] = {
 };
 #define NPTYPES ASIZE(program_header_type_names)
 
-char *elf_file_type[] = {
+static char *const elf_file_type[] = {
     "NONE",
     "REL",
     "EXEC",
@@ -68,7 +81,7 @@ char *elf_file_type[] = {
 };
 #define NFTYPES ASIZE(elf_file_type)
 
-char *machine_name[] = {
+static char *const machine_name[] = {
     "NONE",         /*   0  No machine */
     "M32",          /*   1  AT&T WE 32100 */
     "SPARC",        /*   2  SUN SPARC */
@@ -114,7 +127,7 @@ char *machine_name[] = {
 };
 #define NMTYPES ASIZE(machine_name)
 
-char *reloc_types_386[] = {
+static char *const reloc_types_386[] = {
     "386_NONE",
     "386_32",
     "386_PC32",
@@ -128,7 +141,7 @@ char *reloc_types_386[] = {
     "386_GOTPC",
 };
 
-char *reloc_types_SPARC[] = {
+static char *const reloc_types_SPARC[] = {
     "?",
     "?",
     "?",
@@ -144,10 +157,10 @@ char *reloc_types_SPARC[] = {
     "SPARC_LO10",
 };
 
-char **reloc_type;
-int  nrtypes;
+static char *const *reloc_type;
+static int  nrtypes;
 
-char *tag_name[] = {
+static char *const tag_name[] = {
     "NULL",
     "NEEDED",
     "PLTRELSZ",
@@ -177,7 +190,7 @@ char *tag_name[] = {
 
 
 
-void usage(char *name)
+static void usage(char *name)
 {
     fprintf(stderr, "Usage: %s [-hv] file...\n", name);
 }
@@ -202,7 +215,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
-print_file(char *filename)
+static void print_file(char *filename)
 {
     int fd;
     struct stat statbuf;
@@ -273,7 +286,7 @@ print_file(char *filename)
     free(buf);
 }
 
-print_elf_header(Elf32_Ehdr *e)
+static void print_elf_header(Elf32_Ehdr *e)
 {
     printf("ELF Header\n"
 	   "  Header Size: %d\n"
@@ -294,7 +307,7 @@ print_elf_header(Elf32_Ehdr *e)
 	   e->e_shstrndx);
 }
 
-Elf32_Shdr *section_header(Elf32_Ehdr *e, int s)
+static Elf32_Shdr *section_header(Elf32_Ehdr *e, int s)
 {
     if (s >= e->e_shnum) {
 	fprintf(stderr, "Illegal section number %d\n", s);
@@ -303,13 +316,13 @@ Elf32_Shdr *section_header(Elf32_Ehdr *e, int s)
     return (Elf32_Shdr*)((char*)e + e->e_shoff) + s;
 }
 
-char *section_name(Elf32_Ehdr *e, int s)
+static char *section_name(Elf32_Ehdr *e, int s)
 {
     return (char*)e + section_header(e, e->e_shstrndx)->sh_offset
 	+ section_header(e, s)->sh_name;
 }
 
-Elf32_Phdr *program_header(Elf32_Ehdr *e, int p)
+static Elf32_Phdr *program_header(Elf32_Ehdr *e, int p)
 {
     if (p >= e->e_phnum) {
 	fprintf(stderr, "Illegal program header number %d\n", p);
@@ -318,7 +331,7 @@ Elf32_Phdr *program_header(Elf32_Ehdr *e, int p)
     return (Elf32_Phdr*)((char*)e + e->e_phoff) + p;
 }
 
-print_section_header_table(Elf32_Ehdr *e)
+static void print_section_header_table(Elf32_Ehdr *e)
 {
     int section;
 
@@ -340,7 +353,7 @@ print_section_header_table(Elf32_Ehdr *e)
 
 #define BYTES_PER_LINE 16
 
-dump_section(Elf32_Ehdr *e, int section)
+static void dump_section(Elf32_Ehdr *e, int section)
 {
     Elf32_Shdr *shp = section_header(e, section);
 
@@ -379,13 +392,13 @@ dump_section(Elf32_Ehdr *e, int section)
     }
 }
 
-char *bind[] = {
+static char *const bind[] = {
     "LOCAL",
     "GLOBAL",
     "WEAK",
 };
 
-char *symbol_type[] = {
+static char *const symbol_type[] = {
     "NOTYPE",
     "OBJECT",
     "FUNC",
@@ -393,7 +406,7 @@ char *symbol_type[] = {
     "FILE",
 };
 
-dump_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void dump_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Sym *p, *symtab = (Elf32_Sym*)((char*)e + shp->sh_offset);
     int link = shp->sh_link;
@@ -415,7 +428,7 @@ dump_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Shdr *symtabh = section_header(e, shp->sh_link);
     Elf32_Sym *symtab = (Elf32_Sym*)((char*)e + symtabh->sh_offset);
@@ -458,7 +471,7 @@ dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-dump_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void dump_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     char *p, *start = (char*)e + shp->sh_offset;
     int size = shp->sh_size;
@@ -467,7 +480,7 @@ dump_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	printf("%4d: \"%s\"\n", p - start, p);
 }
 
-dump_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void dump_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Dyn *p, *dyn = (Elf32_Dyn*)((char*)e + shp->sh_offset);
     int ndyns = shp->sh_size / shp->sh_entsize;
@@ -521,7 +534,7 @@ dump_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-dump_other(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void dump_other(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     unsigned char *p, *start = (unsigned char*)e + shp->sh_offset;
     int size = shp->sh_size;
@@ -542,7 +555,7 @@ dump_other(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-char *section_type_name(unsigned int type)
+static char *section_type_name(unsigned int type)
 {
     static char s[16];
 
@@ -554,7 +567,7 @@ char *section_type_name(unsigned int type)
     }
 }
 
-char *ph_type_name(unsigned int type)
+static char *ph_type_name(unsigned int type)
 {
     static char s[16];
 
@@ -566,7 +579,7 @@ char *ph_type_name(unsigned int type)
     }
 }
 
-print_program_header_table(Elf32_Ehdr *e)
+static void print_program_header_table(Elf32_Ehdr *e)
 {
     int prg_header;
 
@@ -585,45 +598,45 @@ print_program_header_table(Elf32_Ehdr *e)
 }
 
 
-Elf32_Off addr2offset(Elf32_Addr addr)
+static Elf32_Off addr2offset(Elf32_Addr addr)
 {
     return addr;
 }
 
-void swap4(unsigned char *p)
+static void swap4(unsigned char *p)
 {
     unsigned char c;
     c = p[0], p[0] = p[3], p[3] = c;
     c = p[1], p[1] = p[2], p[2] = c;
 }
 
-void swap2(unsigned char *p)
+static void swap2(unsigned char *p)
 {
     unsigned char c;
     c = p[0], p[0] = p[1], p[1] = c;
 }
 
-void lsbtoh(unsigned int *p)
+static void lsbtoh(unsigned int *p)
 {
 }
 
-void msbtoh(unsigned int *p)
+static void msbtoh(unsigned int *p)
 {
     swap4((unsigned char *)p);
 }
 
-void lsbtohs(unsigned short *p)
+static void lsbtohs(unsigned short *p)
 {
 }
 
-void msbtohs(unsigned short *p)
+static void msbtohs(unsigned short *p)
 {
     swap2((unsigned char *)p);
 }
 
-void (*conv_s)(unsigned short *), (*conv_l)(unsigned int *);
+static void (*conv_s)(unsigned short *), (*conv_l)(unsigned int *);
 
-void conv(Elf32_Ehdr *e)
+static void conv(Elf32_Ehdr *e)
 {
     int i;
 
@@ -640,7 +653,7 @@ void conv(Elf32_Ehdr *e)
 	conv_sectionheader(e, section_header(e, i));
 }
 
-void conv_elfheader(Elf32_Ehdr *e)
+static void conv_elfheader(Elf32_Ehdr *e)
 {
     conv_s(&e->e_type);
     conv_s(&e->e_machine);
@@ -657,7 +670,7 @@ void conv_elfheader(Elf32_Ehdr *e)
     conv_s(&e->e_shstrndx);
 }
 
-void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     conv_l(&shp->sh_name);
     conv_l(&shp->sh_type);
@@ -681,7 +694,7 @@ void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Sym *p, *symtab = (Elf32_Sym*)((char*)e + shp->sh_offset);
     int nsyms = shp->sh_size / shp->sh_entsize;
@@ -694,7 +707,7 @@ void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     int nrels = shp->sh_size / shp->sh_entsize;
 
