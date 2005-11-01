@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.22 2005/10/27 11:48:29 urs Exp $
+ * $Id: printelf.c,v 1.23 2005/11/01 05:30:31 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -115,6 +115,9 @@ static char *const reloc_types_386[] = {
     R(NONE),     R(32),     R(PC32),     R(GOT32),
     R(PLT32),    R(COPY),   R(GLOB_DAT), R(JMP_SLOT),
     R(RELATIVE), R(GOTOFF), R(GOTPC),
+
+#define R_386_PC16 21
+    R(PC16) "*",
 };
 #undef R
 
