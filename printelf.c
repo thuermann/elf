@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.23 2005/11/01 05:30:31 urs Exp $
+ * $Id: printelf.c,v 1.24 2005/11/01 05:30:41 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -443,10 +443,13 @@ static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	for (p = rel; p < rel + nrels; p++) {
 	    int sym  = ELF32_R_SYM(p->r_info);
 	    int type = ELF32_R_TYPE(p->r_info);
+	    char *typename, tmpbuf[10];
+	    if (type < nrtypes && reloc_type[type])
+		typename = reloc_type[type];
+	    else
+		typename = tmpbuf, sprintf(tmpbuf, "%d", type);
 	    printf("%08x  %-14s  %2d(%s)\n",
-		   p->r_offset,
-		   type < nrtypes && reloc_type[type] ? reloc_type[type] : "?",
-		   sym,
+		   p->r_offset, typename, sym,
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
 	}
@@ -458,11 +461,13 @@ static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	for (p = rel; p < rel + nrels; p++) {
 	    int sym  = ELF32_R_SYM(p->r_info);
 	    int type = ELF32_R_TYPE(p->r_info);
+	    char *typename, tmpbuf[10];
+	    if (type < nrtypes && reloc_type[type])
+		typename = reloc_type[type];
+	    else
+		typename = tmpbuf, sprintf(tmpbuf, "%d", type);
 	    printf("%08x  %-14s  %08x  %2d(%s)\n",
-		   p->r_offset,
-		   type < nrtypes && reloc_type[type] ? reloc_type[type] : "?",
-		   p->r_addend,
-		   sym,
+		   p->r_offset, typename, p->r_addend, sym,
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
 	}
