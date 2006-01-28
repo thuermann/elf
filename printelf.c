@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.25 2006/01/28 14:43:34 urs Exp $
+ * $Id: printelf.c,v 1.26 2006/01/28 14:43:44 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -40,6 +40,8 @@ static void conv_elfheader(Elf32_Ehdr *e);
 static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp);
 static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp);
 static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void conv_programheader(Elf32_Ehdr *e, Elf32_Phdr *php);
 
 
 
@@ -655,6 +657,9 @@ static void conv(Elf32_Ehdr *e)
 
     for (i = 0; i < e->e_shnum; i++)
 	conv_sectionheader(e, section_header(e, i));
+
+    for (i = 0; i < e->e_phnum; i++)
+	conv_programheader(e, program_header(e, i));
 }
 
 static void conv_elfheader(Elf32_Ehdr *e)
@@ -689,11 +694,15 @@ static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
     switch (shp->sh_type) {
     case SHT_SYMTAB:
+    case SHT_DYNSYM:
 	conv_symboltable(e, shp);
 	break;
     case SHT_REL:
     case SHT_RELA:
 	conv_relocation(e, shp);
+	break;
+    case SHT_DYNAMIC:
+	conv_dynamic(e, shp);
 	break;
     }
 }
@@ -734,4 +743,27 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	break;
     }
     }
+}
+
+static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
+{
+    int ndyn = shp->sh_size / shp->sh_entsize;
+    Elf32_Dyn *p, *dyn = (Elf32_Dyn*)((char*)e + shp->sh_offset);
+
+    for (p = dyn; p < dyn + ndyn; p++) {
+	conv_l(&p->d_tag);
+	conv_l(&p->d_un);
+    }
+}
+
+static void conv_programheader(Elf32_Ehdr *e, Elf32_Phdr *php)
+{
+    conv_l(&php->p_type);
+    conv_l(&php->p_offset);
+    conv_l(&php->p_vaddr);
+    conv_l(&php->p_paddr);
+    conv_l(&php->p_filesz);
+    conv_l(&php->p_memsz);
+    conv_l(&php->p_flags);
+    conv_l(&php->p_align);
 }
