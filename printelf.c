@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.24 2005/11/01 05:30:41 urs Exp $
+ * $Id: printelf.c,v 1.25 2006/01/28 14:43:34 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  *
@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -409,7 +410,6 @@ static char *const symbol_type[] = {
 static void dump_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Sym *p, *symtab = (Elf32_Sym*)((char*)e + shp->sh_offset);
-    int link = shp->sh_link;
     char *strtab = (char*)e + section_header(e, shp->sh_link)->sh_offset;
     int nsyms = shp->sh_size / shp->sh_entsize;
 
@@ -434,7 +434,6 @@ static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
     Elf32_Sym *symtab = (Elf32_Sym*)((char*)e + symtabh->sh_offset);
     char *strtab = (char*)e + section_header(e, symtabh->sh_link)->sh_offset;
     int nrels = shp->sh_size / shp->sh_entsize;
-    int type = shp->sh_type;
 
     switch (shp->sh_type) {
     case SHT_REL: {
