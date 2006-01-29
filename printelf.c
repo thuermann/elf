@@ -1,10 +1,7 @@
 /*
- * $Id: printelf.c,v 1.26 2006/01/28 14:43:44 urs Exp $
+ * $Id: printelf.c,v 1.27 2006/01/29 16:08:53 urs Exp $
  *
  * Read an ELF file and print it to stdout.
- *
- * Currently, this works only, if the ELF file has the same endianness
- * as the machine this program runs on.
  */
 
 #include <stdio.h>
@@ -609,50 +606,79 @@ static Elf32_Off addr2offset(Elf32_Addr addr)
     return addr;
 }
 
-static void swap4(unsigned char *p)
+/* Routines for MSB/LSB conversion */
+
+static unsigned char host_endianness()
 {
-    unsigned char c;
-    c = p[0], p[0] = p[3], p[3] = c;
-    c = p[1], p[1] = p[2], p[2] = c;
+    union {
+	Elf32_Word w;
+	char c[4];
+    } w;
+    union {
+    Elf32_Half h;
+	char c[2];
+    } h;
+
+    w.w = 0x01020304, h.h = 0x0102;
+    if (w.c[0] == 1 && w.c[1] == 2 && w.c[2] == 3 && w.c[3] == 4
+	&& h.c[0] == 1 && h.c[1] == 2)
+	return ELFDATA2MSB;
+    else if (w.c[0] == 4 && w.c[1] == 3 && w.c[2] == 2 && w.c[3] == 1
+	     && h.c[0] == 2 && h.c[1] == 1)
+	return ELFDATA2LSB;
+    else
+	return ELFDATANONE;
 }
 
-static void swap2(unsigned char *p)
+static void swap_s(unsigned short *p)
 {
-    unsigned char c;
-    c = p[0], p[0] = p[1], p[1] = c;
+    unsigned char c, *cp = (unsigned char *)p;
+    c = cp[0], cp[0] = cp[1], cp[1] = c;
 }
 
-static void lsbtoh(unsigned int *p)
+static void swap_l(unsigned int *p)
+{
+    unsigned char c, *cp = (unsigned char *)p;
+    c = cp[0], cp[0] = cp[3], cp[3] = c;
+    c = cp[1], cp[1] = cp[2], cp[2] = c;
+}
+
+static void nop_s(unsigned short *p)
 {
 }
 
-static void msbtoh(unsigned int *p)
+static void nop_l(unsigned int *p)
 {
-    swap4((unsigned char *)p);
-}
-
-static void lsbtohs(unsigned short *p)
-{
-}
-
-static void msbtohs(unsigned short *p)
-{
-    swap2((unsigned char *)p);
 }
 
 static void (*conv_s)(unsigned short *), (*conv_l)(unsigned int *);
 
 static void conv(Elf32_Ehdr *e)
 {
+    int elf_endianness = e->e_ident[EI_DATA];
     int i;
 
-    if (e->e_ident[EI_DATA] == ELFDATA2LSB) {
-	conv_s = lsbtohs;
-	conv_l = lsbtoh;
-    } else if (e->e_ident[EI_DATA] == ELFDATA2MSB) {
-	conv_s = msbtohs;
-	conv_l = msbtoh;
+    if (host_endianness() == ELFDATANONE) {
+	fprintf(stderr, "Unknown host endianness\n");
+	exit(1);
     }
+    if (elf_endianness == ELFDATANONE) {
+	fprintf(stderr, "Invalid ELF file endianness\n");
+	exit(1);
+    }
+    if (elf_endianness != ELFDATA2MSB && elf_endianness != ELFDATA2LSB) {
+	fprintf(stderr, "Unknown ELF file endianness\n");
+	exit(1);
+    }
+
+    if (host_endianness() == elf_endianness) {
+	conv_s = nop_s;
+	conv_l = nop_l;
+    } else {
+	conv_s = swap_s;
+	conv_l = swap_l;
+    }
+
     conv_elfheader(e);
 
     for (i = 0; i < e->e_shnum; i++)
@@ -752,7 +778,7 @@ static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
     for (p = dyn; p < dyn + ndyn; p++) {
 	conv_l(&p->d_tag);
-	conv_l(&p->d_un);
+	conv_l((Elf32_Word *)&p->d_un);
     }
 }
 
