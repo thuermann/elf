@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.30 2010/03/29 11:18:51 urs Exp $
+ * $Id: printelf.c,v 1.31 2010/03/29 11:20:31 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -616,16 +616,9 @@ static Elf32_Off addr2offset(Elf32_Addr addr)
 
 static unsigned char host_endianness(void)
 {
-    union {
-	Elf32_Word w;
-	char c[4];
-    } w;
-    union {
-    Elf32_Half h;
-	char c[2];
-    } h;
+    static const union { Elf32_Word w; char c[4]; } w = { .w = 0x01020304 };
+    static const union { Elf32_Half h; char c[2]; } h = { .h = 0x0102 };
 
-    w.w = 0x01020304, h.h = 0x0102;
     if (w.c[0] == 1 && w.c[1] == 2 && w.c[2] == 3 && w.c[3] == 4
 	&& h.c[0] == 1 && h.c[1] == 2)
 	return ELFDATA2MSB;
