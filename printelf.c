@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.28 2010/03/29 11:14:12 urs Exp $
+ * $Id: printelf.c,v 1.29 2010/03/29 11:14:22 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -19,12 +19,12 @@ static void print_elf_header(Elf32_Ehdr *e);
 static void print_program_header_table(Elf32_Ehdr *e);
 static void print_section_header_table(Elf32_Ehdr *e);
 
-static void dump_section(Elf32_Ehdr *e, int section);
-static void dump_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp);
-static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
-static void dump_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp);
-static void dump_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp);
-static void dump_other(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void print_section(Elf32_Ehdr *e, int section);
+static void print_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void print_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void print_other(Elf32_Ehdr *e, Elf32_Shdr *shp);
 
 static char *section_type_name(unsigned int type);
 
@@ -284,7 +284,7 @@ static void print_file(char *filename)
     print_section_header_table(elf_header);
     putchar('\n');
     for (i = 0; i < elf_header->e_shnum; i++) {
-	dump_section(elf_header, i);
+	print_section(elf_header, i);
 	putchar('\n');
     }
 
@@ -358,7 +358,7 @@ static void print_section_header_table(Elf32_Ehdr *e)
 
 #define BYTES_PER_LINE 16
 
-static void dump_section(Elf32_Ehdr *e, int section)
+static void print_section(Elf32_Ehdr *e, int section)
 {
     Elf32_Shdr *shp = section_header(e, section);
 
@@ -376,23 +376,23 @@ static void dump_section(Elf32_Ehdr *e, int section)
 
     switch (shp->sh_type) {
     case SHT_STRTAB:
-	dump_strtab(e, shp);
+	print_strtab(e, shp);
 	break;
     case SHT_SYMTAB:
     case SHT_DYNSYM:
-	dump_symtab(e, shp);
+	print_symtab(e, shp);
 	break;
     case SHT_REL:
     case SHT_RELA:
-	dump_relocation(e, shp);
+	print_relocation(e, shp);
 	break;
     case SHT_DYNAMIC:
-	dump_dynamic(e, shp);
+	print_dynamic(e, shp);
 	break;
     case SHT_HASH:
 	break;
     default:
-	dump_other(e, shp);
+	print_other(e, shp);
 	break;
     }
 }
@@ -406,7 +406,7 @@ static char *const symbol_type[] = {
     "FILE",
 };
 
-static void dump_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void print_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Sym *p, *symtab = (Elf32_Sym *)((char *)e + shp->sh_offset);
     char *strtab = (char *)e + section_header(e, shp->sh_link)->sh_offset;
@@ -427,7 +427,7 @@ static void dump_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Shdr *symtabh = section_header(e, shp->sh_link);
     Elf32_Sym *symtab = (Elf32_Sym *)((char *)e + symtabh->sh_offset);
@@ -474,7 +474,7 @@ static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-static void dump_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void print_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     char *p, *start = (char *)e + shp->sh_offset;
     int size = shp->sh_size;
@@ -483,7 +483,7 @@ static void dump_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	printf("%4d: \"%s\"\n", p - start, p);
 }
 
-static void dump_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Dyn *p, *dyn = (Elf32_Dyn *)((char *)e + shp->sh_offset);
     int ndyns = shp->sh_size / shp->sh_entsize;
@@ -537,7 +537,7 @@ static void dump_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-static void dump_other(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void print_other(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     unsigned char *p, *start = (unsigned char *)e + shp->sh_offset;
     int size = shp->sh_size;
