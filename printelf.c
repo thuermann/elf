@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.27 2006/01/29 16:08:53 urs Exp $
+ * $Id: printelf.c,v 1.28 2010/03/29 11:14:12 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -247,7 +247,7 @@ static void print_file(char *filename)
     }
     close(fd);
 
-    /* and print dump it stdout. */
+    /* and print it to stdout. */
 
     elf_header = buf;
 
@@ -318,12 +318,12 @@ static Elf32_Shdr *section_header(Elf32_Ehdr *e, int s)
 	fprintf(stderr, "Illegal section number %d\n", s);
 	exit(1);
     }
-    return (Elf32_Shdr*)((char*)e + e->e_shoff) + s;
+    return (Elf32_Shdr *)((char *)e + e->e_shoff) + s;
 }
 
 static char *section_name(Elf32_Ehdr *e, int s)
 {
-    return (char*)e + section_header(e, e->e_shstrndx)->sh_offset
+    return (char *)e + section_header(e, e->e_shstrndx)->sh_offset
 	+ section_header(e, s)->sh_name;
 }
 
@@ -333,7 +333,7 @@ static Elf32_Phdr *program_header(Elf32_Ehdr *e, int p)
 	fprintf(stderr, "Illegal program header number %d\n", p);
 	exit(1);
     }
-    return (Elf32_Phdr*)((char*)e + e->e_phoff) + p;
+    return (Elf32_Phdr *)((char *)e + e->e_phoff) + p;
 }
 
 static void print_section_header_table(Elf32_Ehdr *e)
@@ -408,8 +408,8 @@ static char *const symbol_type[] = {
 
 static void dump_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    Elf32_Sym *p, *symtab = (Elf32_Sym*)((char*)e + shp->sh_offset);
-    char *strtab = (char*)e + section_header(e, shp->sh_link)->sh_offset;
+    Elf32_Sym *p, *symtab = (Elf32_Sym *)((char *)e + shp->sh_offset);
+    char *strtab = (char *)e + section_header(e, shp->sh_link)->sh_offset;
     int nsyms = shp->sh_size / shp->sh_entsize;
 
     for (p = symtab; p < symtab + nsyms; p++) {
@@ -430,13 +430,13 @@ static void dump_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Shdr *symtabh = section_header(e, shp->sh_link);
-    Elf32_Sym *symtab = (Elf32_Sym*)((char*)e + symtabh->sh_offset);
-    char *strtab = (char*)e + section_header(e, symtabh->sh_link)->sh_offset;
+    Elf32_Sym *symtab = (Elf32_Sym *)((char *)e + symtabh->sh_offset);
+    char *strtab = (char *)e + section_header(e, symtabh->sh_link)->sh_offset;
     int nrels = shp->sh_size / shp->sh_entsize;
 
     switch (shp->sh_type) {
     case SHT_REL: {
-	Elf32_Rel *p, *rel = (Elf32_Rel*)((char*)e + shp->sh_offset);
+	Elf32_Rel *p, *rel = (Elf32_Rel *)((char *)e + shp->sh_offset);
 	printf("Address   Type            Symbol\n");
 	for (p = rel; p < rel + nrels; p++) {
 	    int sym  = ELF32_R_SYM(p->r_info);
@@ -454,7 +454,7 @@ static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	break;
     }
     case SHT_RELA: {
-	Elf32_Rela *p, *rel = (Elf32_Rela*)((char*)e + shp->sh_offset);
+	Elf32_Rela *p, *rel = (Elf32_Rela *)((char *)e + shp->sh_offset);
 	printf("Address   Type            Addend    Symbol\n");
 	for (p = rel; p < rel + nrels; p++) {
 	    int sym  = ELF32_R_SYM(p->r_info);
@@ -476,7 +476,7 @@ static void dump_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
 static void dump_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    char *p, *start = (char*)e + shp->sh_offset;
+    char *p, *start = (char *)e + shp->sh_offset;
     int size = shp->sh_size;
 
     for (p = start; p < start + size; p += strlen(p) + 1)
@@ -485,7 +485,7 @@ static void dump_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
 static void dump_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    Elf32_Dyn *p, *dyn = (Elf32_Dyn*)((char*)e + shp->sh_offset);
+    Elf32_Dyn *p, *dyn = (Elf32_Dyn *)((char *)e + shp->sh_offset);
     int ndyns = shp->sh_size / shp->sh_entsize;
     char *strtab      = NULL;
     Elf32_Sym *symtab = NULL;
@@ -493,10 +493,10 @@ static void dump_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
     for (p = dyn; p < dyn + ndyns; p++) {
 	switch (p->d_tag) {
 	case DT_SYMTAB:
-	    symtab = (Elf32_Sym*)((char*)e + addr2offset(p->d_un.d_ptr));
+	    symtab = (Elf32_Sym *)((char *)e + addr2offset(p->d_un.d_ptr));
 	    break;
 	case DT_STRTAB:
-	    strtab = (char*)e + addr2offset(p->d_un.d_ptr);
+	    strtab = (char *)e + addr2offset(p->d_un.d_ptr);
 	    break;
 	}
     }
@@ -539,7 +539,7 @@ static void dump_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
 static void dump_other(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    unsigned char *p, *start = (unsigned char*)e + shp->sh_offset;
+    unsigned char *p, *start = (unsigned char *)e + shp->sh_offset;
     int size = shp->sh_size;
     int nbytes, i;
 
@@ -608,7 +608,7 @@ static Elf32_Off addr2offset(Elf32_Addr addr)
 
 /* Routines for MSB/LSB conversion */
 
-static unsigned char host_endianness()
+static unsigned char host_endianness(void)
 {
     union {
 	Elf32_Word w;
@@ -735,7 +735,7 @@ static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
 static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    Elf32_Sym *p, *symtab = (Elf32_Sym*)((char*)e + shp->sh_offset);
+    Elf32_Sym *p, *symtab = (Elf32_Sym *)((char *)e + shp->sh_offset);
     int nsyms = shp->sh_size / shp->sh_entsize;
 
     for (p = symtab; p < symtab + nsyms; p++) {
@@ -752,7 +752,7 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
     switch (shp->sh_type) {
     case SHT_REL: {
-	Elf32_Rel *p, *rel = (Elf32_Rel*)((char*)e + shp->sh_offset);
+	Elf32_Rel *p, *rel = (Elf32_Rel *)((char *)e + shp->sh_offset);
 	for (p = rel; p < rel + nrels; p++) {
 	    conv_l(&p->r_offset);
 	    conv_l(&p->r_info);
@@ -760,7 +760,7 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	break;
     }
     case SHT_RELA: {
-	Elf32_Rela *p, *rel = (Elf32_Rela*)((char*)e + shp->sh_offset);
+	Elf32_Rela *p, *rel = (Elf32_Rela *)((char *)e + shp->sh_offset);
 	for (p = rel; p < rel + nrels; p++) {
 	    conv_l(&p->r_offset);
 	    conv_l(&p->r_info);
@@ -774,7 +774,7 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     int ndyn = shp->sh_size / shp->sh_entsize;
-    Elf32_Dyn *p, *dyn = (Elf32_Dyn*)((char*)e + shp->sh_offset);
+    Elf32_Dyn *p, *dyn = (Elf32_Dyn *)((char *)e + shp->sh_offset);
 
     for (p = dyn; p < dyn + ndyn; p++) {
 	conv_l(&p->d_tag);
