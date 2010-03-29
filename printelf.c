@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.29 2010/03/29 11:14:22 urs Exp $
+ * $Id: printelf.c,v 1.30 2010/03/29 11:18:51 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -25,6 +25,8 @@ static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
 static void print_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp);
 static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp);
 static void print_other(Elf32_Ehdr *e, Elf32_Shdr *shp);
+
+static void dump(void *s, size_t size);
 
 static char *section_type_name(unsigned int type);
 
@@ -356,8 +358,6 @@ static void print_section_header_table(Elf32_Ehdr *e)
     }
 }
 
-#define BYTES_PER_LINE 16
-
 static void print_section(Elf32_Ehdr *e, int section)
 {
     Elf32_Shdr *shp = section_header(e, section);
@@ -539,8 +539,14 @@ static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
 static void print_other(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    unsigned char *p, *start = (unsigned char *)e + shp->sh_offset;
-    int size = shp->sh_size;
+    dump((char *)e + shp->sh_offset, shp->sh_size);
+}
+
+#define BYTES_PER_LINE 16
+
+static void dump(void *s, size_t size)
+{
+    unsigned char *p, *start = s;
     int nbytes, i;
 
     for (p = start; size > 0; p += BYTES_PER_LINE) {
