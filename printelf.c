@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.33 2012/04/14 10:14:48 urs Exp $
+ * $Id: printelf.c,v 1.34 2012/04/14 10:14:58 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -115,17 +115,21 @@ static char *const machine_name[] = {
 };
 #define NMTYPES ASIZE(machine_name)
 
+#ifndef R_386_PC16
+#define R_386_PC16 21
+#endif
 #define R(s) [R_386_ ## s] = "386_" #s
 static char *const reloc_types_386[] = {
     R(NONE),     R(32),     R(PC32),     R(GOT32),
     R(PLT32),    R(COPY),   R(GLOB_DAT), R(JMP_SLOT),
     R(RELATIVE), R(GOTOFF), R(GOTPC),
-
-#define R_386_PC16 21
-    R(PC16) "*",
+    R(PC16),
 };
 #undef R
 
+#ifndef R_SPARC_GLOB_JMP
+#define R_SPARC_GLOB_JMP 42
+#endif
 #define R(s) [R_SPARC_ ## s] = "SPARC_" #s
 static char *const reloc_types_SPARC[] = {
     R(NONE),     R(8),        R(16),       R(32),
@@ -141,13 +145,16 @@ static char *const reloc_types_SPARC[] = {
     R(PCPLT22),  R(PCPLT10),  R(10),       R(11),
     R(64),       R(OLO10),    R(HH22),     R(HM10),
     R(LM22),     R(PC_HH22),  R(PC_HM10),  R(PC_LM22),
-    R(WDISP16),  R(WDISP19),  R(7),        R(5),
-    R(6),        R(DISP64),   R(PLT64),    R(HIX22),
-    R(LOX10),    R(H44),      R(M44),      R(L44),
-    R(REGISTER), R(UA64),     R(UA16),
+    R(WDISP16),  R(WDISP19),  R(GLOB_JMP), R(7),
+    R(5),        R(6),        R(DISP64),   R(PLT64),
+    R(HIX22),    R(LOX10),    R(H44),      R(M44),
+    R(L44),      R(REGISTER), R(UA64),     R(UA16),
 };
 #undef R
 
+#ifndef R_PPC_ADDR30
+#define R_PPC_ADDR30 37
+#endif
 #define R(s) [R_PPC_ ## s] = "PPC_" #s
 static char *const reloc_types_PPC[] = {
     R(NONE),           R(ADDR32),          R(ADDR24),     R(ADDR16),
@@ -159,10 +166,7 @@ static char *const reloc_types_PPC[] = {
     R(UADDR32),        R(UADDR16),         R(REL32),      R(PLT32),
     R(PLTREL32),       R(PLT16_LO),        R(PLT16_HI),   R(PLT16_HA),
     R(SDAREL16),       R(SECTOFF),         R(SECTOFF_LO), R(SECTOFF_HI),
-    R(SECTOFF_HA),
-
-#define R_PPC_ADDR30 37
-    R(ADDR30),
+    R(SECTOFF_HA),     R(ADDR30),
 };
 #undef R
 
