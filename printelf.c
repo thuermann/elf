@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.31 2010/03/29 11:20:31 urs Exp $
+ * $Id: printelf.c,v 1.32 2012/04/14 10:12:53 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -46,69 +46,67 @@ static void conv_programheader(Elf32_Ehdr *e, Elf32_Phdr *php);
 
 #define ASIZE(a) (sizeof(a)/sizeof(*a))
 
+#define SHT(s) [SHT_ ## s] = #s
 static char *const section_type_names[] = {
-    "NULL",   "PROGBITS", "SYMTAB",  "STRTAB",
-    "RELA",   "HASH",     "DYNAMIC", "NOTE",
-    "NOBITS", "REL",      "SHLIB",   "DYNSYM",
-    "NUM",
+    SHT(NULL),   SHT(PROGBITS), SHT(SYMTAB),  SHT(STRTAB),
+    SHT(RELA),   SHT(HASH),     SHT(DYNAMIC), SHT(NOTE),
+    SHT(NOBITS), SHT(REL),      SHT(SHLIB),   SHT(DYNSYM),
 };
 #define NSTYPES ASIZE(section_type_names)
 
+#define PT(s) [PT_ ## s] = #s
 static char *const program_header_type_names[] = {
-    "NULL",  "LOAD",   "DYNAMIC",  "INTERP",
-    "NOTE",  "SHLIB",  "PHDR",
+    PT(NULL),  PT(LOAD),   PT(DYNAMIC),  PT(INTERP),
+    PT(NOTE),  PT(SHLIB),  PT(PHDR),
 };
 #define NPTYPES ASIZE(program_header_type_names)
 
+#define ET(s) [ET_ ## s] = #s
 static char *const elf_file_type[] = {
-    "NONE",  "REL",  "EXEC",  "DYN",
-    "CORE",
+    ET(NONE),  ET(REL),  ET(EXEC),  ET(DYN),
+    ET(CORE),
 };
 #define NFTYPES ASIZE(elf_file_type)
 
+#define EM(s) [EM_ ## s] = #s
 static char *const machine_name[] = {
-    "NONE",         /*   0  No machine */
-    "M32",          /*   1  AT&T WE 32100 */
-    "SPARC",        /*   2  SUN SPARC */
-    "386",          /*   3  Intel 80386 */
-    "68K",          /*   4  Motorola m68k family */
-    "88K",          /*   5  Motorola m88k family */
-    "486",          /*   6  Intel 80486 */
-    "860",          /*   7  Intel 80860 */
-    "MIPS",         /*   8  MIPS R3000 big-endian */
-    "S370",         /*   9  Amdahl */
-    "MIPS_RS4_BE",  /*  10  MIPS R4000 big-endian */
-    "RS6000",       /*  11  RS6000 */
+    EM(NONE),         /* No machine */
+    EM(M32),          /* AT&T WE 32100 */
+    EM(SPARC),        /* SUN SPARC */
+    EM(386),          /* Intel 80386 */
+    EM(68K),          /* Motorola m68k family */
+    EM(88K),          /* Motorola m88k family */
 
-    0,0,0,
+    EM(860),          /* Intel 80860 */
+    EM(MIPS),         /* MIPS R3000 big-endian */
+    EM(S370),         /* Amdahl */
+    EM(MIPS_RS3_LE),  /* MIPS R3000 little-endian */
 
-    "PARISC",       /*  15  HPPA */
-    "nCUBE",        /*  16  nCUBE */
-    "VPP500",       /*  17  Fujitsu VPP500 */
-    "SPARC32PLUS",  /*  18  Sun's "v8plus" */
-    "960",          /*  19  Intel 80960 */
-    "PPC",          /*  20  PowerPC */
+    EM(PARISC),       /* HPPA */
 
-    0,0,0,0,0,  0,0,0,0,0,  0,0,0,0,0,
+    EM(VPP500),       /* Fujitsu VPP500 */
+    EM(SPARC32PLUS),  /* Sun's "v8plus" */
+    EM(960),          /* Intel 80960 */
+    EM(PPC),          /* PowerPC */
 
-    "V800",         /*  36  NEC V800 series */
-    "FR20",         /*  37  Fujitsu FR20 */
-    "RH32",         /*  38  TRW RH32 */
-    "MMA",          /*  39  Fujitsu MMA */
-    "ARM",          /*  40  ARM */
-    "FAKE_ALPHA",   /*  41  Digital Alpha */
-    "SH",           /*  42  Hitachi SH */
-    "SPARCV9",      /*  43  SPARC v9 64-bit */
-    "TRICORE",      /*  44  Siemens Tricore */
-    "ARC",          /*  45  Argonaut RISC Core */
-    "H8_300",       /*  46  Hitachi H8/300 */
-    "H8_300H",      /*  47  Hitachi H8/300H */
-    "H8S",          /*  48  Hitachi H8S */
-    "H8_500",       /*  49  Hitachi H8/500 */
-    "IA_64",        /*  50  Intel Merced */
-    "MIPS_X",       /*  51  Stanford MIPS-X */
-    "COLDFIRE",     /*  52  Motorola Coldfire */
-    "68HC12",       /*  53  Motorola M68HC12 */
+    EM(V800),         /* NEC V800 series */
+    EM(FR20),         /* Fujitsu FR20 */
+    EM(RH32),         /* TRW RH32 */
+    EM(MMA),          /* Fujitsu MMA */
+    EM(ARM),          /* ARM */
+    EM(FAKE_ALPHA),   /* Digital Alpha */
+    EM(SH),           /* Hitachi SH */
+    EM(SPARCV9),      /* SPARC v9 64-bit */
+    EM(TRICORE),      /* Siemens Tricore */
+    EM(ARC),          /* Argonaut RISC Core */
+    EM(H8_300),       /* Hitachi H8/300 */
+    EM(H8_300H),      /* Hitachi H8/300H */
+    EM(H8S),          /* Hitachi H8S */
+    EM(H8_500),       /* Hitachi H8/500 */
+    EM(IA_64),        /* Intel Merced */
+    EM(MIPS_X),       /* Stanford MIPS-X */
+    EM(COLDFIRE),     /* Motorola Coldfire */
+    EM(68HC12),       /* Motorola M68HC12 */
 };
 #define NMTYPES ASIZE(machine_name)
 
@@ -177,13 +175,14 @@ static char *const reloc_types_68K[] = {
 static char *const *reloc_type;
 static int  nrtypes;
 
+#define DT(s) [DT_ ## s] = #s
 static char *const tag_name[] = {
-    "NULL",     "NEEDED",  "PLTRELSZ", "PLTGOT",
-    "HASH",     "STRTAB",  "SYMTAB",   "RELA",
-    "RELASZ",   "RELAENT", "STRSZ",    "SYMENT",
-    "INIT",     "FINI",    "SONAME",   "RPATH",
-    "SYMBOLIC", "REL",     "RELSZ",    "RELENT",
-    "PLTREL",   "DEBUG",   "TEXTREL",  "JMPREL",
+    DT(NULL),     DT(NEEDED),  DT(PLTRELSZ), DT(PLTGOT),
+    DT(HASH),     DT(STRTAB),  DT(SYMTAB),   DT(RELA),
+    DT(RELASZ),   DT(RELAENT), DT(STRSZ),    DT(SYMENT),
+    DT(INIT),     DT(FINI),    DT(SONAME),   DT(RPATH),
+    DT(SYMBOLIC), DT(REL),     DT(RELSZ),    DT(RELENT),
+    DT(PLTREL),   DT(DEBUG),   DT(TEXTREL),  DT(JMPREL),
 };
 #define NTAGS ASIZE(tag_name)
 
@@ -397,13 +396,15 @@ static void print_section(Elf32_Ehdr *e, int section)
     }
 }
 
+#define STB(s) [STB_ ## s] = #s
 static char *const bind[] = {
-    "LOCAL", "GLOBAL", "WEAK",
+    STB(LOCAL), STB(GLOBAL), STB(WEAK),
 };
 
+#define STT(s) [STT_ ## s] = #s
 static char *const symbol_type[] = {
-    "NOTYPE", "OBJECT", "FUNC", "SECTION",
-    "FILE",
+    STT(NOTYPE), STT(OBJECT), STT(FUNC), STT(SECTION),
+    STT(FILE),
 };
 
 static void print_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
