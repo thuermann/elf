@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.32 2012/04/14 10:12:53 urs Exp $
+ * $Id: printelf.c,v 1.33 2012/04/14 10:14:48 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -88,11 +88,13 @@ static char *const machine_name[] = {
     EM(SPARC32PLUS),  /* Sun's "v8plus" */
     EM(960),          /* Intel 80960 */
     EM(PPC),          /* PowerPC */
+    EM(PPC64),        /* PowerPC 64 bit */
+    EM(S390),         /* IBM S390 */
 
     EM(V800),         /* NEC V800 series */
     EM(FR20),         /* Fujitsu FR20 */
     EM(RH32),         /* TRW RH32 */
-    EM(MMA),          /* Fujitsu MMA */
+    EM(RCE),          /* Motorola RCE */
     EM(ARM),          /* ARM */
     EM(FAKE_ALPHA),   /* Digital Alpha */
     EM(SH),           /* Hitachi SH */
@@ -107,6 +109,9 @@ static char *const machine_name[] = {
     EM(MIPS_X),       /* Stanford MIPS-X */
     EM(COLDFIRE),     /* Motorola Coldfire */
     EM(68HC12),       /* Motorola M68HC12 */
+    EM(MMA),          /* Fujitsu MMA */
+
+    EM(X86_64),       /* AMD x86-64 */
 };
 #define NMTYPES ASIZE(machine_name)
 
