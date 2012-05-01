@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.35 2012/05/01 06:06:42 urs Exp $
+ * $Id: printelf.c,v 1.36 2012/05/01 06:07:20 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -423,7 +423,7 @@ static void print_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
     int nsyms = shp->sh_size / shp->sh_entsize;
 
     for (p = symtab; p < symtab + nsyms; p++) {
-	printf("%4d: %-24s 0x%08x %4d %-6s %-7s %-10s\n",
+	printf("%4td: %-24s 0x%08x %4d %-6s %-7s %-10s\n",
 	       p - symtab,
 	       strtab + p->st_name,
 	       p->st_value, p->st_size,
@@ -490,7 +490,7 @@ static void print_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
     int size = shp->sh_size;
 
     for (p = start; p < start + size; p += strlen(p) + 1)
-	printf("%4d: \"%s\"\n", p - start, p);
+	printf("%4td: \"%s\"\n", p - start, p);
 }
 
 static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
@@ -560,7 +560,7 @@ static void dump(void *s, size_t size)
     int nbytes, i;
 
     for (p = start; size > 0; p += BYTES_PER_LINE) {
-	printf("%06x ", p - start);
+	printf("%06tx ", p - start);
 	nbytes = size > BYTES_PER_LINE ? BYTES_PER_LINE : size;
 	size -= nbytes;
 	for (i = 0; i < nbytes; i++)
