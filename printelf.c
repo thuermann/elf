@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.36 2012/05/01 06:07:20 urs Exp $
+ * $Id: printelf.c,v 1.37 2012/05/01 06:08:10 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -27,6 +27,7 @@ static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp);
 static void print_other(Elf32_Ehdr *e, Elf32_Shdr *shp);
 
 static void dump(void *s, size_t size);
+static size_t min(size_t a, size_t b);
 
 static char *section_type_name(unsigned int type);
 
@@ -559,10 +560,10 @@ static void dump(void *s, size_t size)
     unsigned char *p, *start = s;
     int nbytes, i;
 
-    for (p = start; size > 0; p += BYTES_PER_LINE) {
+    for (p = start; size > 0; p += nbytes, size -= nbytes) {
+	nbytes = min(size, BYTES_PER_LINE);
+
 	printf("%06tx ", p - start);
-	nbytes = size > BYTES_PER_LINE ? BYTES_PER_LINE : size;
-	size -= nbytes;
 	for (i = 0; i < nbytes; i++)
 	    printf(" %02x", p[i]);
 	for (i = nbytes; i < BYTES_PER_LINE; i++)
@@ -572,6 +573,11 @@ static void dump(void *s, size_t size)
 	    putchar(isprint(p[i]) ? p[i] : '.');
 	putchar('\n');
     }
+}
+
+static size_t min(size_t a, size_t b)
+{
+    return a < b ? a : b;
 }
 
 static char *section_type_name(unsigned int type)
