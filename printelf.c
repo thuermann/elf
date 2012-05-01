@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.34 2012/04/14 10:14:58 urs Exp $
+ * $Id: printelf.c,v 1.35 2012/05/01 06:06:42 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -516,7 +516,7 @@ static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	return;
     }
     for (p = dyn; p < dyn + ndyns; p++) {
-	int tag = p->d_tag;
+	unsigned int tag = p->d_tag;
 	char *tagname = tag < NTAGS ? tag_name[tag] : "?";
 	switch (tag) {
 	case DT_NEEDED:
