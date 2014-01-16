@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.37 2012/05/01 06:08:10 urs Exp $
+ * $Id: printelf.c,v 1.38 2014/01/16 19:08:33 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -289,14 +289,15 @@ static void print_file(char *filename)
 
     print_elf_header(elf_header);
 
+    putchar('\n');
     print_program_header_table(elf_header);
-    putchar('\n');
 
-    print_section_header_table(elf_header);
     putchar('\n');
+    print_section_header_table(elf_header);
+
     for (i = 0; i < elf_header->e_shnum; i++) {
-	print_section(elf_header, i);
 	putchar('\n');
+	print_section(elf_header, i);
     }
 
     free(buf);
@@ -313,7 +314,7 @@ static void print_elf_header(Elf32_Ehdr *e)
 	   "  Flags:       0x%x\n"
 	   "  Sections:    %2d x %2d @ %08x\n"
 	   "  Segments:    %2d x %2d @ %08x\n"
-	   "  Shstrndx:    %d\n\n",
+	   "  Shstrndx:    %d\n",
 	   e->e_ehsize,
 	   e->e_type    < NFTYPES ? elf_file_type[e->e_type]   : "?",
 	   e->e_machine < NMTYPES ? machine_name[e->e_machine] : "?",
