@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.38 2014/01/16 19:08:33 urs Exp $
+ * $Id: printelf.c,v 1.39 2014/01/16 20:49:31 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -125,6 +125,21 @@ static char *const reloc_types_386[] = {
     R(PLT32),    R(COPY),   R(GLOB_DAT), R(JMP_SLOT),
     R(RELATIVE), R(GOTOFF), R(GOTPC),
     R(PC16),
+};
+#undef R
+
+#define R(s) [R_X86_64_ ## s] = "X86_64_" #s
+static char *const reloc_types_X86_64[] = {
+    R(NONE),       R(64),        R(PC32),            R(GOT32),
+    R(PLT32),      R(COPY),      R(GLOB_DAT),        R(JUMP_SLOT),
+    R(RELATIVE),   R(GOTPCREL),  R(32),              R(32S),
+    R(16),         R(PC16),      R(8),               R(PC8),
+    R(DTPMOD64),   R(DTPOFF64),  R(TPOFF64),         R(TLSGD),
+    R(TLSLD),      R(DTPOFF32),  R(GOTTPOFF),        R(TPOFF32),
+    R(PC64),       R(GOTOFF64),  R(GOTPC32),         R(GOT64),
+    R(GOTPCREL64), R(GOTPC64),   R(GOTPLT64),        R(PLTOFF64),
+    R(SIZE32),     R(SIZE64),    R(GOTPC32_TLSDESC), R(TLSDESC_CALL),
+    R(TLSDESC),    R(IRELATIVE), R(RELATIVE64),
 };
 #undef R
 
@@ -268,6 +283,10 @@ static void print_file(char *filename)
     case EM_386:
 	reloc_type = reloc_types_386;
 	nrtypes    = ASIZE(reloc_types_386);
+	break;
+    case EM_X86_64:
+	reloc_type = reloc_types_X86_64;
+	nrtypes    = ASIZE(reloc_types_X86_64);
 	break;
     case EM_SPARC:
 	reloc_type = reloc_types_SPARC;
