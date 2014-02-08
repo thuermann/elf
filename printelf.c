@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.39 2014/01/16 20:49:31 urs Exp $
+ * $Id: printelf.c,v 1.40 2014/02/08 16:25:34 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -30,8 +30,6 @@ static void dump(void *s, size_t size);
 static size_t min(size_t a, size_t b);
 
 static char *section_type_name(unsigned int type);
-
-static Elf32_Off addr2offset(Elf32_Addr addr);
 
 /* MSB/LSB conversion routines */
 
@@ -518,16 +516,15 @@ static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Dyn *p, *dyn = (Elf32_Dyn *)((char *)e + shp->sh_offset);
     int ndyns = shp->sh_size / shp->sh_entsize;
-    char *strtab      = NULL;
-    Elf32_Sym *symtab = NULL;
+    Elf32_Addr symtab = 0, strtab = 0;
 
     for (p = dyn; p < dyn + ndyns; p++) {
 	switch (p->d_tag) {
 	case DT_SYMTAB:
-	    symtab = (Elf32_Sym *)((char *)e + addr2offset(p->d_un.d_ptr));
+	    symtab = p->d_un.d_ptr;
 	    break;
 	case DT_STRTAB:
-	    strtab = (char *)e + addr2offset(p->d_un.d_ptr);
+	    strtab = p->d_un.d_ptr;
 	    break;
 	}
     }
@@ -642,11 +639,6 @@ static void print_program_header_table(Elf32_Ehdr *e)
     }
 }
 
-
-static Elf32_Off addr2offset(Elf32_Addr addr)
-{
-    return addr;
-}
 
 /* Routines for MSB/LSB conversion */
 
