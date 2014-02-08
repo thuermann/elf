@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.40 2014/02/08 16:25:34 urs Exp $
+ * $Id: printelf.c,v 1.41 2014/02/08 16:25:44 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -545,18 +545,29 @@ static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	case DT_PLTRELSZ:
 	case DT_RELASZ:
 	case DT_RELAENT:
+	case DT_RELSZ:
+	case DT_RELENT:
+	case DT_PLTREL:
 	case DT_STRSZ:
 	case DT_SYMENT:
 	    printf("%-8s  %d\n", tagname, p->d_un.d_val);
 	    break;
+	case DT_INIT:
+	case DT_FINI:
 	case DT_PLTGOT:
 	case DT_RELA:
+	case DT_REL:
 	case DT_HASH:
 	case DT_SYMTAB:
 	case DT_STRTAB:
 	case DT_JMPREL:
 	case DT_DEBUG:
 	    printf("%-8s  %08x\n", tagname, p->d_un.d_ptr);
+	    break;
+	case DT_NULL:
+	case DT_SYMBOLIC:
+	case DT_TEXTREL:
+	    puts(tagname);
 	    break;
 	default:
 	    printf("%-8s  ?\n", tagname);
