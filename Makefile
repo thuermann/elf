@@ -1,9 +1,9 @@
 #
-# $Id: Makefile,v 1.1 2012/04/28 05:21:03 urs Exp $
+# $Id: Makefile,v 1.2 2014/02/08 17:06:36 urs Exp $
 #
 
 RM      = rm -f
-CFLAGS  = -Os
+CFLAGS  = -Os -Wall -Wextra
 LDFLAGS = -s
 
 programs = printelf
