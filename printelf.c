@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.42 2014/02/11 01:00:14 urs Exp $
+ * $Id: printelf.c,v 1.43 2014/02/11 01:00:24 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -30,6 +30,7 @@ static void dump(void *s, size_t size);
 static size_t min(size_t a, size_t b);
 
 static char *section_type_name(unsigned int type);
+static char *reloc_type_name(unsigned int type);
 
 /* MSB/LSB conversion routines */
 
@@ -350,10 +351,15 @@ static Elf32_Shdr *section_header(Elf32_Ehdr *e, unsigned int s)
     return (Elf32_Shdr *)((char *)e + e->e_shoff) + s;
 }
 
+static void *section_data(Elf32_Ehdr *e, Elf32_Shdr *shp)
+{
+    return (char *)e + shp->sh_offset;
+}
+
 static char *section_name(Elf32_Ehdr *e, unsigned int s)
 {
-    return (char *)e + section_header(e, e->e_shstrndx)->sh_offset
-	+ section_header(e, s)->sh_name;
+    char *strtab = section_data(e, section_header(e, e->e_shstrndx));
+    return strtab + section_header(e, s)->sh_name;
 }
 
 static Elf32_Phdr *program_header(Elf32_Ehdr *e, unsigned int p)
@@ -437,9 +443,10 @@ static char *const symbol_type[] = {
 
 static void print_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    Elf32_Sym *p, *symtab = (Elf32_Sym *)((char *)e + shp->sh_offset);
-    char *strtab = (char *)e + section_header(e, shp->sh_link)->sh_offset;
-    unsigned int nsyms = shp->sh_size / shp->sh_entsize;
+    Elf32_Sym *p, *symtab  = section_data(e, shp);
+    Elf32_Shdr    *strtabh = section_header(e, shp->sh_link);
+    char          *strtab  = section_data(e, strtabh);
+    unsigned int   nsyms   = shp->sh_size / shp->sh_entsize;
 
     for (p = symtab; p < symtab + nsyms; p++) {
 	printf("%4td: %-24s 0x%08x %4u %-6s %-7s %-10s\n",
@@ -459,42 +466,33 @@ static void print_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Shdr *symtabh = section_header(e, shp->sh_link);
-    Elf32_Sym *symtab = (Elf32_Sym *)((char *)e + symtabh->sh_offset);
-    char *strtab = (char *)e + section_header(e, symtabh->sh_link)->sh_offset;
-    unsigned int nrels = shp->sh_size / shp->sh_entsize;
+    Elf32_Sym  *symtab  = section_data(e, symtabh);
+    Elf32_Shdr *strtabh = section_header(e, symtabh->sh_link);
+    char       *strtab  = section_data(e, strtabh);
+    unsigned int nrels  = shp->sh_size / shp->sh_entsize;
 
     switch (shp->sh_type) {
     case SHT_REL: {
-	Elf32_Rel *p, *rel = (Elf32_Rel *)((char *)e + shp->sh_offset);
+	Elf32_Rel *p, *rel = section_data(e, shp);
 	printf("Address   Type            Symbol\n");
 	for (p = rel; p < rel + nrels; p++) {
 	    unsigned int sym  = ELF32_R_SYM(p->r_info);
 	    unsigned int type = ELF32_R_TYPE(p->r_info);
-	    char *typename, tmpbuf[10];
-	    if (type < nrtypes && reloc_type[type])
-		typename = reloc_type[type];
-	    else
-		typename = tmpbuf, sprintf(tmpbuf, "%u", type);
 	    printf("%08x  %-14s  %2u(%s)\n",
-		   p->r_offset, typename, sym,
+		   p->r_offset, reloc_type_name(type), sym,
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
 	}
 	break;
     }
     case SHT_RELA: {
-	Elf32_Rela *p, *rel = (Elf32_Rela *)((char *)e + shp->sh_offset);
+	Elf32_Rela *p, *rel = section_data(e, shp);
 	printf("Address   Type            Addend    Symbol\n");
 	for (p = rel; p < rel + nrels; p++) {
 	    unsigned int sym  = ELF32_R_SYM(p->r_info);
 	    unsigned int type = ELF32_R_TYPE(p->r_info);
-	    char *typename, tmpbuf[10];
-	    if (type < nrtypes && reloc_type[type])
-		typename = reloc_type[type];
-	    else
-		typename = tmpbuf, sprintf(tmpbuf, "%u", type);
 	    printf("%08x  %-14s  %08x  %2u(%s)\n",
-		   p->r_offset, typename, p->r_addend, sym,
+		   p->r_offset, reloc_type_name(type), p->r_addend, sym,
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
 	}
@@ -505,7 +503,7 @@ static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
 static void print_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    char *p, *start = (char *)e + shp->sh_offset;
+    char *p, *start = section_data(e, shp);
     unsigned int size = shp->sh_size;
 
     for (p = start; p < start + size; p += strlen(p) + 1)
@@ -514,7 +512,7 @@ static void print_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
 static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    Elf32_Dyn *p, *dyn = (Elf32_Dyn *)((char *)e + shp->sh_offset);
+    Elf32_Dyn *p, *dyn = section_data(e, shp);
     unsigned int ndyns = shp->sh_size / shp->sh_entsize;
     Elf32_Addr symtab = 0, strtab = 0;
 
@@ -578,7 +576,7 @@ static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
 static void print_other(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    dump((char *)e + shp->sh_offset, shp->sh_size);
+    dump(section_data(e, shp), shp->sh_size);
 }
 
 #define BYTES_PER_LINE 16
@@ -616,6 +614,18 @@ static char *section_type_name(unsigned int type)
 	return section_type_names[type];
     else {
 	sprintf(s, "0x%08x", type);
+	return s;
+    }
+}
+
+static char *reloc_type_name(unsigned int type)
+{
+    static char s[16];
+
+    if (type < nrtypes)
+	return reloc_type[type];
+    else {
+	sprintf(s, "%u", type);
 	return s;
     }
 }
@@ -773,7 +783,7 @@ static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
 static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    Elf32_Sym *p, *symtab = (Elf32_Sym *)((char *)e + shp->sh_offset);
+    Elf32_Sym *p, *symtab = section_data(e, shp);
     unsigned int nsyms = shp->sh_size / shp->sh_entsize;
 
     for (p = symtab; p < symtab + nsyms; p++) {
@@ -790,7 +800,7 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
     switch (shp->sh_type) {
     case SHT_REL: {
-	Elf32_Rel *p, *rel = (Elf32_Rel *)((char *)e + shp->sh_offset);
+	Elf32_Rel *p, *rel = section_data(e, shp);
 	for (p = rel; p < rel + nrels; p++) {
 	    conv_l(&p->r_offset);
 	    conv_l(&p->r_info);
@@ -798,7 +808,7 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	break;
     }
     case SHT_RELA: {
-	Elf32_Rela *p, *rel = (Elf32_Rela *)((char *)e + shp->sh_offset);
+	Elf32_Rela *p, *rel = section_data(e, shp);
 	for (p = rel; p < rel + nrels; p++) {
 	    conv_l(&p->r_offset);
 	    conv_l(&p->r_info);
@@ -812,7 +822,7 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     unsigned int ndyn = shp->sh_size / shp->sh_entsize;
-    Elf32_Dyn *p, *dyn = (Elf32_Dyn *)((char *)e + shp->sh_offset);
+    Elf32_Dyn *p, *dyn = section_data(e, shp);
 
     for (p = dyn; p < dyn + ndyn; p++) {
 	conv_l(&p->d_tag);
