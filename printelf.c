@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.41 2014/02/08 16:25:44 urs Exp $
+ * $Id: printelf.c,v 1.42 2014/02/11 01:00:14 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -19,7 +19,7 @@ static void print_elf_header(Elf32_Ehdr *e);
 static void print_program_header_table(Elf32_Ehdr *e);
 static void print_section_header_table(Elf32_Ehdr *e);
 
-static void print_section(Elf32_Ehdr *e, int section);
+static void print_section(Elf32_Ehdr *e, unsigned int section);
 static void print_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp);
 static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
 static void print_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp);
@@ -196,7 +196,7 @@ static char *const reloc_types_68K[] = {
 #undef R
 
 static char *const *reloc_type;
-static int  nrtypes;
+static unsigned int nrtypes;
 
 #define DT(s) [DT_ ## s] = #s
 static char *const tag_name[] = {
@@ -241,8 +241,8 @@ static void print_file(char *filename)
     int fd;
     struct stat statbuf;
     void *buf;
-    int size;
-    int i;
+    size_t size;
+    unsigned int i;
     Elf32_Ehdr *elf_header;
 
     /* Read the file to memory */
@@ -323,15 +323,15 @@ static void print_file(char *filename)
 static void print_elf_header(Elf32_Ehdr *e)
 {
     printf("ELF Header\n"
-	   "  Header Size: %d\n"
+	   "  Header Size: %u\n"
 	   "  Type:        %s\n"
 	   "  Machine:     %s\n"
-	   "  Version:     %d\n"
+	   "  Version:     %u\n"
 	   "  Entry:       0x%08x\n"
 	   "  Flags:       0x%x\n"
-	   "  Sections:    %2d x %2d @ %08x\n"
-	   "  Segments:    %2d x %2d @ %08x\n"
-	   "  Shstrndx:    %d\n",
+	   "  Sections:    %2u x %2u @ %08x\n"
+	   "  Segments:    %2u x %2u @ %08x\n"
+	   "  Shstrndx:    %u\n",
 	   e->e_ehsize,
 	   e->e_type    < NFTYPES ? elf_file_type[e->e_type]   : "?",
 	   e->e_machine < NMTYPES ? machine_name[e->e_machine] : "?",
@@ -341,25 +341,25 @@ static void print_elf_header(Elf32_Ehdr *e)
 	   e->e_shstrndx);
 }
 
-static Elf32_Shdr *section_header(Elf32_Ehdr *e, int s)
+static Elf32_Shdr *section_header(Elf32_Ehdr *e, unsigned int s)
 {
     if (s >= e->e_shnum) {
-	fprintf(stderr, "Illegal section number %d\n", s);
+	fprintf(stderr, "Illegal section number %u\n", s);
 	exit(1);
     }
     return (Elf32_Shdr *)((char *)e + e->e_shoff) + s;
 }
 
-static char *section_name(Elf32_Ehdr *e, int s)
+static char *section_name(Elf32_Ehdr *e, unsigned int s)
 {
     return (char *)e + section_header(e, e->e_shstrndx)->sh_offset
 	+ section_header(e, s)->sh_name;
 }
 
-static Elf32_Phdr *program_header(Elf32_Ehdr *e, int p)
+static Elf32_Phdr *program_header(Elf32_Ehdr *e, unsigned int p)
 {
     if (p >= e->e_phnum) {
-	fprintf(stderr, "Illegal program header number %d\n", p);
+	fprintf(stderr, "Illegal program header number %u\n", p);
 	exit(1);
     }
     return (Elf32_Phdr *)((char *)e + e->e_phoff) + p;
@@ -367,7 +367,7 @@ static Elf32_Phdr *program_header(Elf32_Ehdr *e, int p)
 
 static void print_section_header_table(Elf32_Ehdr *e)
 {
-    int section;
+    unsigned int section;
 
     printf("Section Header Table\n"
 	   " #  Type      "
@@ -375,7 +375,7 @@ static void print_section_header_table(Elf32_Ehdr *e)
 
     for (section = 0; section < e->e_shnum; section++) {
 	Elf32_Shdr *shp = section_header(e, section);
-	printf("%2d  %-8s  %06x  %06x  %08x  %2d   %2d   %2d   %04x  %-16s\n",
+	printf("%2u  %-8s  %06x  %06x  %08x  %2u   %2u   %2u   %04x  %-16s\n",
 	       section, section_type_name(shp->sh_type),
 	       shp->sh_offset, shp->sh_size,
 	       shp->sh_addr, shp->sh_link, shp->sh_info,
@@ -385,7 +385,7 @@ static void print_section_header_table(Elf32_Ehdr *e)
     }
 }
 
-static void print_section(Elf32_Ehdr *e, int section)
+static void print_section(Elf32_Ehdr *e, unsigned int section)
 {
     Elf32_Shdr *shp = section_header(e, section);
 
@@ -397,7 +397,7 @@ static void print_section(Elf32_Ehdr *e, int section)
     if (shp->sh_size == 0)
 	return;
 
-    printf("section: %d  %-10s %-10s %2d %2d 0x%08x %4d\n",
+    printf("section: %u  %-10s %-10s %2u %2u 0x%08x %4u\n",
 	   section, section_name(e, section), section_type_name(shp->sh_type),
 	   shp->sh_link, shp->sh_info, shp->sh_addr, shp->sh_size);
 
@@ -439,10 +439,10 @@ static void print_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Sym *p, *symtab = (Elf32_Sym *)((char *)e + shp->sh_offset);
     char *strtab = (char *)e + section_header(e, shp->sh_link)->sh_offset;
-    int nsyms = shp->sh_size / shp->sh_entsize;
+    unsigned int nsyms = shp->sh_size / shp->sh_entsize;
 
     for (p = symtab; p < symtab + nsyms; p++) {
-	printf("%4td: %-24s 0x%08x %4d %-6s %-7s %-10s\n",
+	printf("%4td: %-24s 0x%08x %4u %-6s %-7s %-10s\n",
 	       p - symtab,
 	       strtab + p->st_name,
 	       p->st_value, p->st_size,
@@ -461,21 +461,21 @@ static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
     Elf32_Shdr *symtabh = section_header(e, shp->sh_link);
     Elf32_Sym *symtab = (Elf32_Sym *)((char *)e + symtabh->sh_offset);
     char *strtab = (char *)e + section_header(e, symtabh->sh_link)->sh_offset;
-    int nrels = shp->sh_size / shp->sh_entsize;
+    unsigned int nrels = shp->sh_size / shp->sh_entsize;
 
     switch (shp->sh_type) {
     case SHT_REL: {
 	Elf32_Rel *p, *rel = (Elf32_Rel *)((char *)e + shp->sh_offset);
 	printf("Address   Type            Symbol\n");
 	for (p = rel; p < rel + nrels; p++) {
-	    int sym  = ELF32_R_SYM(p->r_info);
-	    int type = ELF32_R_TYPE(p->r_info);
+	    unsigned int sym  = ELF32_R_SYM(p->r_info);
+	    unsigned int type = ELF32_R_TYPE(p->r_info);
 	    char *typename, tmpbuf[10];
 	    if (type < nrtypes && reloc_type[type])
 		typename = reloc_type[type];
 	    else
-		typename = tmpbuf, sprintf(tmpbuf, "%d", type);
-	    printf("%08x  %-14s  %2d(%s)\n",
+		typename = tmpbuf, sprintf(tmpbuf, "%u", type);
+	    printf("%08x  %-14s  %2u(%s)\n",
 		   p->r_offset, typename, sym,
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
@@ -486,14 +486,14 @@ static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	Elf32_Rela *p, *rel = (Elf32_Rela *)((char *)e + shp->sh_offset);
 	printf("Address   Type            Addend    Symbol\n");
 	for (p = rel; p < rel + nrels; p++) {
-	    int sym  = ELF32_R_SYM(p->r_info);
-	    int type = ELF32_R_TYPE(p->r_info);
+	    unsigned int sym  = ELF32_R_SYM(p->r_info);
+	    unsigned int type = ELF32_R_TYPE(p->r_info);
 	    char *typename, tmpbuf[10];
 	    if (type < nrtypes && reloc_type[type])
 		typename = reloc_type[type];
 	    else
-		typename = tmpbuf, sprintf(tmpbuf, "%d", type);
-	    printf("%08x  %-14s  %08x  %2d(%s)\n",
+		typename = tmpbuf, sprintf(tmpbuf, "%u", type);
+	    printf("%08x  %-14s  %08x  %2u(%s)\n",
 		   p->r_offset, typename, p->r_addend, sym,
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
@@ -506,7 +506,7 @@ static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 static void print_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     char *p, *start = (char *)e + shp->sh_offset;
-    int size = shp->sh_size;
+    unsigned int size = shp->sh_size;
 
     for (p = start; p < start + size; p += strlen(p) + 1)
 	printf("%4td: \"%s\"\n", p - start, p);
@@ -515,7 +515,7 @@ static void print_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
 static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Dyn *p, *dyn = (Elf32_Dyn *)((char *)e + shp->sh_offset);
-    int ndyns = shp->sh_size / shp->sh_entsize;
+    unsigned int ndyns = shp->sh_size / shp->sh_entsize;
     Elf32_Addr symtab = 0, strtab = 0;
 
     for (p = dyn; p < dyn + ndyns; p++) {
@@ -540,7 +540,7 @@ static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	case DT_NEEDED:
 	case DT_SONAME:
 	case DT_RPATH:
-	    printf("%-8s  %d (0x%08x)\n", tagname, p->d_un.d_val, strtab);
+	    printf("%-8s  %u (0x%08x)\n", tagname, p->d_un.d_val, strtab);
 	    break;
 	case DT_PLTRELSZ:
 	case DT_RELASZ:
@@ -550,7 +550,7 @@ static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	case DT_PLTREL:
 	case DT_STRSZ:
 	case DT_SYMENT:
-	    printf("%-8s  %d\n", tagname, p->d_un.d_val);
+	    printf("%-8s  %u\n", tagname, p->d_un.d_val);
 	    break;
 	case DT_INIT:
 	case DT_FINI:
@@ -634,7 +634,7 @@ static char *ph_type_name(unsigned int type)
 
 static void print_program_header_table(Elf32_Ehdr *e)
 {
-    int prg_header;
+    unsigned int prg_header;
 
     printf("Program Header Table\n"
 	   "    Type      Offset  Filesz  Vaddr     Paddr     Memsz   "
@@ -694,7 +694,7 @@ static void (*conv_s)(unsigned short *), (*conv_l)(unsigned int *);
 static void conv(Elf32_Ehdr *e)
 {
     int elf_endianness = e->e_ident[EI_DATA];
-    int i;
+    unsigned int i;
 
     if (host_endianness() == ELFDATANONE) {
 	fprintf(stderr, "Unknown host endianness\n");
@@ -774,7 +774,7 @@ static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp)
 static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     Elf32_Sym *p, *symtab = (Elf32_Sym *)((char *)e + shp->sh_offset);
-    int nsyms = shp->sh_size / shp->sh_entsize;
+    unsigned int nsyms = shp->sh_size / shp->sh_entsize;
 
     for (p = symtab; p < symtab + nsyms; p++) {
 	conv_l(&p->st_name);
@@ -786,7 +786,7 @@ static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
 static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    int nrels = shp->sh_size / shp->sh_entsize;
+    unsigned int nrels = shp->sh_size / shp->sh_entsize;
 
     switch (shp->sh_type) {
     case SHT_REL: {
@@ -811,7 +811,7 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 
 static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
-    int ndyn = shp->sh_size / shp->sh_entsize;
+    unsigned int ndyn = shp->sh_size / shp->sh_entsize;
     Elf32_Dyn *p, *dyn = (Elf32_Dyn *)((char *)e + shp->sh_offset);
 
     for (p = dyn; p < dyn + ndyn; p++) {
