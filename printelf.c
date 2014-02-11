@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.50 2014/02/11 08:05:54 urs Exp $
+ * $Id: printelf.c,v 1.51 2014/02/11 10:00:59 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -42,6 +42,7 @@ static size_t min(size_t a, size_t b);
 
 /* MSB/LSB conversion routines */
 
+static unsigned char host_endianness(void);
 static void conv(Elf32_Ehdr *e);
 static void conv_elfheader(Elf32_Ehdr *e);
 static void conv_programheader(Elf32_Ehdr *e, Elf32_Phdr *ph);
@@ -53,6 +54,11 @@ static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *sh);
 int main(int argc, char **argv)
 {
     int c;
+
+    if (host_endianness() == ELFDATANONE) {
+	fprintf(stderr, "Unknown host endianness\n");
+	exit(1);
+    }
 
     while ((c = getopt(argc, argv, "hv")) != -1) {
 	switch (c) {
@@ -252,19 +258,43 @@ static void print_file(const char *filename)
     void *buf;
     unsigned int i;
     Elf32_Ehdr *elf_header;
+    unsigned char *ident;
 
     /* Read the file to memory */
 
     if (!(buf = load_file(filename)))
 	return;
 
-    /* and print it to stdout. */
-
     elf_header = buf;
+
+    ident = elf_header->e_ident;
+
+    if (memcmp(ident, ELFMAG, SELFMAG) != 0) {
+	fprintf(stderr, "%s: No ELF file\n", filename);
+	goto out;
+    }
+    if (ident[EI_CLASS] != ELFCLASS32 && ident[EI_CLASS] != ELFCLASS64) {
+	fprintf(stderr, "%s: Unknown ELF class\n", filename);
+	goto out;
+    }
+    if (ident[EI_CLASS] == ELFCLASS64) {
+	fprintf(stderr, "%s: ELF64 not yet implemented\n", filename);
+	goto out;
+    }
+    if (ident[EI_DATA] != ELFDATA2LSB && ident[EI_DATA] != ELFDATA2MSB) {
+	fprintf(stderr, "%s: Unknown data encoding\n", filename);
+	goto out;
+    }
+    if (ident[EI_VERSION] != EV_CURRENT) {
+	fprintf(stderr, "%s: Unknown ELF version\n", filename);
+	goto out;
+    }
 
     conv(elf_header);
 
     set_relocation(elf_header->e_machine);
+
+    /* and print it to stdout. */
 
     print_elf_header(elf_header);
 
@@ -279,6 +309,7 @@ static void print_file(const char *filename)
 	print_section(elf_header, i);
     }
 
+out:
     free(buf);
 }
 
@@ -719,19 +750,6 @@ static void conv(Elf32_Ehdr *e)
 {
     int elf_endianness = e->e_ident[EI_DATA];
     unsigned int i;
-
-    if (host_endianness() == ELFDATANONE) {
-	fprintf(stderr, "Unknown host endianness\n");
-	exit(1);
-    }
-    if (elf_endianness == ELFDATANONE) {
-	fprintf(stderr, "Invalid ELF file endianness\n");
-	exit(1);
-    }
-    if (elf_endianness != ELFDATA2MSB && elf_endianness != ELFDATA2LSB) {
-	fprintf(stderr, "Unknown ELF file endianness\n");
-	exit(1);
-    }
 
     if (host_endianness() == elf_endianness) {
 	conv_s = nop_s;
