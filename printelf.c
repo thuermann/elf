@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.44 2014/02/11 01:00:34 urs Exp $
+ * $Id: printelf.c,v 1.45 2014/02/11 01:00:44 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -431,7 +431,7 @@ static void print_section(const Elf32_Ehdr *e, unsigned int section)
 }
 
 #define STB(s) [STB_ ## s] = #s
-static char *const bind[] = {
+static char *const symbol_bind[] = {
     STB(LOCAL), STB(GLOBAL), STB(WEAK),
 };
 
@@ -453,7 +453,7 @@ static void print_symtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 	       p - symtab,
 	       strtab + p->st_name,
 	       p->st_value, p->st_size,
-	       bind[ELF32_ST_BIND(p->st_info)],
+	       symbol_bind[ELF32_ST_BIND(p->st_info)],
 	       symbol_type[ELF32_ST_TYPE(p->st_info)],
 	       p->st_shndx == SHN_UNDEF ? "UNDEF" :
 	       (p->st_shndx == SHN_ABS ? "ABS" :
