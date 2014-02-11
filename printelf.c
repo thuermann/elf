@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.47 2014/02/11 01:01:04 urs Exp $
+ * $Id: printelf.c,v 1.48 2014/02/11 01:01:14 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -14,6 +14,11 @@
 
 #include <elf.h>
 
+static void usage(const char *name)
+{
+    fprintf(stderr, "Usage: %s [-hv] file...\n", name);
+}
+
 static void print_file(const char *filename);
 static void print_elf_header(const Elf32_Ehdr *e);
 static void print_program_header_table(const Elf32_Ehdr *e);
@@ -26,25 +31,58 @@ static void print_strtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
 static void print_dynamic(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
 static void print_other(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
 
-static void dump(const void *s, size_t size);
-static size_t min(size_t a, size_t b);
-
+static char *ph_type_name(unsigned int type);
 static char *section_type_name(unsigned int type);
 static char *reloc_type_name(unsigned int type);
+
+static void dump(const void *s, size_t size);
+static size_t min(size_t a, size_t b);
 
 /* MSB/LSB conversion routines */
 
 static void conv(Elf32_Ehdr *e);
 static void conv_elfheader(Elf32_Ehdr *e);
+static void conv_programheader(Elf32_Ehdr *e, Elf32_Phdr *php);
 static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp);
 static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp);
 static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
 static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp);
-static void conv_programheader(Elf32_Ehdr *e, Elf32_Phdr *php);
 
+int main(int argc, char **argv)
+{
+    int c;
 
+    while ((c = getopt(argc, argv, "hv")) != -1) {
+	switch (c) {
+	case 'v':
+	    break;
+	case '?':
+	case 'h':
+	    usage(argv[0]);
+	    exit(1);
+	}
+    }
+    for (; optind < argc; optind++)
+	print_file(argv[optind]);
+
+    return 0;
+}
 
 #define ASIZE(a) (sizeof(a)/sizeof(*a))
+
+#define ET(s) [ET_ ## s] = #s
+static char *const elf_file_type[] = {
+    ET(NONE),  ET(REL),  ET(EXEC),  ET(DYN),
+    ET(CORE),
+};
+#define NFTYPES ASIZE(elf_file_type)
+
+#define PT(s) [PT_ ## s] = #s
+static char *const program_header_type_names[] = {
+    PT(NULL),  PT(LOAD),   PT(DYNAMIC),  PT(INTERP),
+    PT(NOTE),  PT(SHLIB),  PT(PHDR),
+};
+#define NPTYPES ASIZE(program_header_type_names)
 
 #define SHT(s) [SHT_ ## s] = #s
 static char *const section_type_names[] = {
@@ -54,19 +92,27 @@ static char *const section_type_names[] = {
 };
 #define NSTYPES ASIZE(section_type_names)
 
-#define PT(s) [PT_ ## s] = #s
-static char *const program_header_type_names[] = {
-    PT(NULL),  PT(LOAD),   PT(DYNAMIC),  PT(INTERP),
-    PT(NOTE),  PT(SHLIB),  PT(PHDR),
+#define DT(s) [DT_ ## s] = #s
+static char *const tag_name[] = {
+    DT(NULL),     DT(NEEDED),  DT(PLTRELSZ), DT(PLTGOT),
+    DT(HASH),     DT(STRTAB),  DT(SYMTAB),   DT(RELA),
+    DT(RELASZ),   DT(RELAENT), DT(STRSZ),    DT(SYMENT),
+    DT(INIT),     DT(FINI),    DT(SONAME),   DT(RPATH),
+    DT(SYMBOLIC), DT(REL),     DT(RELSZ),    DT(RELENT),
+    DT(PLTREL),   DT(DEBUG),   DT(TEXTREL),  DT(JMPREL),
 };
-#define NPTYPES ASIZE(program_header_type_names)
+#define NTAGS ASIZE(tag_name)
 
-#define ET(s) [ET_ ## s] = #s
-static char *const elf_file_type[] = {
-    ET(NONE),  ET(REL),  ET(EXEC),  ET(DYN),
-    ET(CORE),
+#define STB(s) [STB_ ## s] = #s
+static char *const symbol_bind[] = {
+    STB(LOCAL), STB(GLOBAL), STB(WEAK),
 };
-#define NFTYPES ASIZE(elf_file_type)
+
+#define STT(s) [STT_ ## s] = #s
+static char *const symbol_type[] = {
+    STT(NOTYPE), STT(OBJECT), STT(FUNC), STT(SECTION),
+    STT(FILE),
+};
 
 #define EM(s) [EM_ ## s] = #s
 static char *const machine_name[] = {
@@ -199,44 +245,6 @@ static char *const reloc_types_68K[] = {
 static char *const *reloc_type;
 static unsigned int nrtypes;
 
-#define DT(s) [DT_ ## s] = #s
-static char *const tag_name[] = {
-    DT(NULL),     DT(NEEDED),  DT(PLTRELSZ), DT(PLTGOT),
-    DT(HASH),     DT(STRTAB),  DT(SYMTAB),   DT(RELA),
-    DT(RELASZ),   DT(RELAENT), DT(STRSZ),    DT(SYMENT),
-    DT(INIT),     DT(FINI),    DT(SONAME),   DT(RPATH),
-    DT(SYMBOLIC), DT(REL),     DT(RELSZ),    DT(RELENT),
-    DT(PLTREL),   DT(DEBUG),   DT(TEXTREL),  DT(JMPREL),
-};
-#define NTAGS ASIZE(tag_name)
-
-
-
-static void usage(const char *name)
-{
-    fprintf(stderr, "Usage: %s [-hv] file...\n", name);
-}
-
-int main(int argc, char **argv)
-{
-    int c;
-
-    while ((c = getopt(argc, argv, "hv")) != -1) {
-	switch (c) {
-	case 'v':
-	    break;
-	case '?':
-	case 'h':
-	    usage(argv[0]);
-	    exit(1);
-	}
-    }
-    for (; optind < argc; optind++)
-	print_file(argv[optind]);
-
-    return 0;
-}
-
 static void print_file(const char *filename)
 {
     int fd;
@@ -342,6 +350,15 @@ static void print_elf_header(const Elf32_Ehdr *e)
 	   e->e_shstrndx);
 }
 
+static Elf32_Phdr *program_header(const Elf32_Ehdr *e, unsigned int p)
+{
+    if (p >= e->e_phnum) {
+	fprintf(stderr, "Illegal program header number %u\n", p);
+	exit(1);
+    }
+    return (Elf32_Phdr *)((char *)e + e->e_phoff) + p;
+}
+
 static Elf32_Shdr *section_header(const Elf32_Ehdr *e, unsigned int s)
 {
     if (s >= e->e_shnum) {
@@ -362,13 +379,22 @@ static char *section_name(const Elf32_Ehdr *e, unsigned int s)
     return strtab + section_header(e, s)->sh_name;
 }
 
-static Elf32_Phdr *program_header(const Elf32_Ehdr *e, unsigned int p)
+static void print_program_header_table(const Elf32_Ehdr *e)
 {
-    if (p >= e->e_phnum) {
-	fprintf(stderr, "Illegal program header number %u\n", p);
-	exit(1);
+    unsigned int prg_header;
+
+    printf("Program Header Table\n"
+	   "    Type        Offset  Filesz  Vaddr     Paddr     Memsz   "
+	   "Align   Flags\n");
+
+    for (prg_header = 0; prg_header < e->e_phnum; prg_header++) {
+	Elf32_Phdr *php = program_header(e, prg_header);
+	printf("    %-10s  %06x  %06x  %08x  %08x  %06x  %06x  %06x\n",
+	       ph_type_name(php->p_type),
+	       php->p_offset, php->p_filesz,
+	       php->p_vaddr, php->p_paddr, php->p_memsz,
+	       php->p_align, php->p_flags);
     }
-    return (Elf32_Phdr *)((char *)e + e->e_phoff) + p;
 }
 
 static void print_section_header_table(const Elf32_Ehdr *e)
@@ -429,17 +455,6 @@ static void print_section(const Elf32_Ehdr *e, unsigned int section)
 	break;
     }
 }
-
-#define STB(s) [STB_ ## s] = #s
-static char *const symbol_bind[] = {
-    STB(LOCAL), STB(GLOBAL), STB(WEAK),
-};
-
-#define STT(s) [STT_ ## s] = #s
-static char *const symbol_type[] = {
-    STT(NOTYPE), STT(OBJECT), STT(FUNC), STT(SECTION),
-    STT(FILE),
-};
 
 static void print_symtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 {
@@ -579,31 +594,16 @@ static void print_other(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
     dump(section_data(e, shp), shp->sh_size);
 }
 
-#define BYTES_PER_LINE 16
-
-static void dump(const void *s, size_t size)
+static char *ph_type_name(unsigned int type)
 {
-    const unsigned char *p, *start = s;
-    int nbytes, i;
+    static char s[16];
 
-    for (p = start; size > 0; p += nbytes, size -= nbytes) {
-	nbytes = min(size, BYTES_PER_LINE);
-
-	printf("%06tx ", p - start);
-	for (i = 0; i < nbytes; i++)
-	    printf(" %02x", p[i]);
-	for (i = nbytes; i < BYTES_PER_LINE; i++)
-	    fputs("   ", stdout);
-	fputs("   ", stdout);
-	for (i = 0; i < nbytes; i++)
-	    putchar(isprint(p[i]) ? p[i] : '.');
-	putchar('\n');
+    if (type < NPTYPES)
+	return program_header_type_names[type];
+    else {
+	sprintf(s, "0x%08x", type);
+	return s;
     }
-}
-
-static size_t min(size_t a, size_t b)
-{
-    return a < b ? a : b;
 }
 
 static char *section_type_name(unsigned int type)
@@ -630,36 +630,32 @@ static char *reloc_type_name(unsigned int type)
     }
 }
 
-static char *ph_type_name(unsigned int type)
-{
-    static char s[16];
+#define BYTES_PER_LINE 16
 
-    if (type < NPTYPES)
-	return program_header_type_names[type];
-    else {
-	sprintf(s, "0x%08x", type);
-	return s;
+static void dump(const void *s, size_t size)
+{
+    const unsigned char *p, *start = s;
+    int nbytes, i;
+
+    for (p = start; size > 0; p += nbytes, size -= nbytes) {
+	nbytes = min(size, BYTES_PER_LINE);
+
+	printf("%06tx ", p - start);
+	for (i = 0; i < nbytes; i++)
+	    printf(" %02x", p[i]);
+	for (i = nbytes; i < BYTES_PER_LINE; i++)
+	    fputs("   ", stdout);
+	fputs("   ", stdout);
+	for (i = 0; i < nbytes; i++)
+	    putchar(isprint(p[i]) ? p[i] : '.');
+	putchar('\n');
     }
 }
 
-static void print_program_header_table(const Elf32_Ehdr *e)
+static size_t min(size_t a, size_t b)
 {
-    unsigned int prg_header;
-
-    printf("Program Header Table\n"
-	   "    Type        Offset  Filesz  Vaddr     Paddr     Memsz   "
-	   "Align   Flags\n");
-
-    for (prg_header = 0; prg_header < e->e_phnum; prg_header++) {
-	Elf32_Phdr *php = program_header(e, prg_header);
-	printf("    %-10s  %06x  %06x  %08x  %08x  %06x  %06x  %06x\n",
-	       ph_type_name(php->p_type),
-	       php->p_offset, php->p_filesz,
-	       php->p_vaddr, php->p_paddr, php->p_memsz,
-	       php->p_align, php->p_flags);
-    }
+    return a < b ? a : b;
 }
-
 
 /* Routines for MSB/LSB conversion */
 
@@ -753,6 +749,18 @@ static void conv_elfheader(Elf32_Ehdr *e)
     conv_s(&e->e_shstrndx);
 }
 
+static void conv_programheader(Elf32_Ehdr *e, Elf32_Phdr *php)
+{
+    conv_l(&php->p_type);
+    conv_l(&php->p_offset);
+    conv_l(&php->p_vaddr);
+    conv_l(&php->p_paddr);
+    conv_l(&php->p_filesz);
+    conv_l(&php->p_memsz);
+    conv_l(&php->p_flags);
+    conv_l(&php->p_align);
+}
+
 static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp)
 {
     conv_l(&shp->sh_name);
@@ -828,16 +836,4 @@ static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	conv_l(&p->d_tag);
 	conv_l((Elf32_Word *)&p->d_un);
     }
-}
-
-static void conv_programheader(Elf32_Ehdr *e, Elf32_Phdr *php)
-{
-    conv_l(&php->p_type);
-    conv_l(&php->p_offset);
-    conv_l(&php->p_vaddr);
-    conv_l(&php->p_paddr);
-    conv_l(&php->p_filesz);
-    conv_l(&php->p_memsz);
-    conv_l(&php->p_flags);
-    conv_l(&php->p_align);
 }
