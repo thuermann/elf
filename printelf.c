@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.49 2014/02/11 01:01:24 urs Exp $
+ * $Id: printelf.c,v 1.50 2014/02/11 08:05:54 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -34,7 +34,9 @@ static void print_other(const Elf32_Ehdr *e, const Elf32_Shdr *sh);
 static char *ph_type_name(unsigned int type);
 static char *section_type_name(unsigned int type);
 static char *reloc_type_name(unsigned int type);
+static void set_relocation(unsigned int machine);
 
+static char *load_file(const char *filename);
 static void dump(const void *s, size_t size);
 static size_t min(size_t a, size_t b);
 
@@ -247,38 +249,14 @@ static unsigned int nrtypes;
 
 static void print_file(const char *filename)
 {
-    int fd;
-    struct stat statbuf;
     void *buf;
-    size_t size;
     unsigned int i;
     Elf32_Ehdr *elf_header;
 
     /* Read the file to memory */
 
-    if ((fd = open(filename, O_RDONLY)) < 0) {
-	perror(filename);
+    if (!(buf = load_file(filename)))
 	return;
-    }
-    if (fstat(fd, &statbuf) < 0) {
-	perror(filename);
-	close(fd);
-	return;
-    }
-
-    size = statbuf.st_size;
-    if (!(buf = malloc(size))) {
-	fprintf(stderr, "%s: Insufficient memory.\n", filename);
-	close(fd);
-	return;
-    }
-    if (read(fd, buf, size) < 0) {
-	perror(filename);
-	free(buf);
-	close(fd);
-	return;
-    }
-    close(fd);
 
     /* and print it to stdout. */
 
@@ -286,32 +264,7 @@ static void print_file(const char *filename)
 
     conv(elf_header);
 
-    switch (elf_header->e_machine) {
-    case EM_386:
-	reloc_types = reloc_types_386;
-	nrtypes     = ASIZE(reloc_types_386);
-	break;
-    case EM_X86_64:
-	reloc_types = reloc_types_X86_64;
-	nrtypes     = ASIZE(reloc_types_X86_64);
-	break;
-    case EM_SPARC:
-	reloc_types = reloc_types_SPARC;
-	nrtypes     = ASIZE(reloc_types_SPARC);
-	break;
-    case EM_PPC:
-	reloc_types = reloc_types_PPC;
-	nrtypes     = ASIZE(reloc_types_PPC);
-	break;
-    case EM_68K:
-	reloc_types = reloc_types_68K;
-	nrtypes     = ASIZE(reloc_types_68K);
-	break;
-    default:
-	reloc_types = NULL;
-	nrtypes     = 0;
-	break;
-    }
+    set_relocation(elf_header->e_machine);
 
     print_elf_header(elf_header);
 
@@ -629,6 +582,70 @@ static char *reloc_type_name(unsigned int type)
 	sprintf(s, "%u", type);
 	return s;
     }
+}
+
+static void set_relocation(unsigned int machine)
+{
+    switch (machine) {
+    case EM_386:
+	reloc_types = reloc_types_386;
+	nrtypes     = ASIZE(reloc_types_386);
+	break;
+    case EM_X86_64:
+	reloc_types = reloc_types_X86_64;
+	nrtypes     = ASIZE(reloc_types_X86_64);
+	break;
+    case EM_SPARC:
+	reloc_types = reloc_types_SPARC;
+	nrtypes     = ASIZE(reloc_types_SPARC);
+	break;
+    case EM_PPC:
+	reloc_types = reloc_types_PPC;
+	nrtypes     = ASIZE(reloc_types_PPC);
+	break;
+    case EM_68K:
+	reloc_types = reloc_types_68K;
+	nrtypes     = ASIZE(reloc_types_68K);
+	break;
+    default:
+	reloc_types = NULL;
+	nrtypes     = 0;
+	break;
+    }
+}
+
+static char *load_file(const char *filename)
+{
+    char *buf;
+    int fd;
+    struct stat statbuf;
+    size_t size;
+
+    if ((fd = open(filename, O_RDONLY)) < 0) {
+	perror(filename);
+	return NULL;
+    }
+    if (fstat(fd, &statbuf) < 0) {
+	perror(filename);
+	close(fd);
+	return NULL;
+    }
+
+    size = statbuf.st_size;
+    if (!(buf = malloc(size))) {
+	fprintf(stderr, "%s: Insufficient memory.\n", filename);
+	close(fd);
+	return NULL;
+    }
+    if (read(fd, buf, size) < 0) {
+	perror(filename);
+	free(buf);
+	close(fd);
+	return NULL;
+    }
+    close(fd);
+
+    return buf;
 }
 
 #define BYTES_PER_LINE 16
