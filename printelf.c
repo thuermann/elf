@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.43 2014/02/11 01:00:24 urs Exp $
+ * $Id: printelf.c,v 1.44 2014/02/11 01:00:34 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -14,19 +14,19 @@
 
 #include <elf.h>
 
-static void print_file(char *filename);
-static void print_elf_header(Elf32_Ehdr *e);
-static void print_program_header_table(Elf32_Ehdr *e);
-static void print_section_header_table(Elf32_Ehdr *e);
+static void print_file(const char *filename);
+static void print_elf_header(const Elf32_Ehdr *e);
+static void print_program_header_table(const Elf32_Ehdr *e);
+static void print_section_header_table(const Elf32_Ehdr *e);
 
-static void print_section(Elf32_Ehdr *e, unsigned int section);
-static void print_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp);
-static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
-static void print_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp);
-static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp);
-static void print_other(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void print_section(const Elf32_Ehdr *e, unsigned int section);
+static void print_symtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
+static void print_relocation(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
+static void print_strtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
+static void print_dynamic(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
+static void print_other(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
 
-static void dump(void *s, size_t size);
+static void dump(const void *s, size_t size);
 static size_t min(size_t a, size_t b);
 
 static char *section_type_name(unsigned int type);
@@ -212,7 +212,7 @@ static char *const tag_name[] = {
 
 
 
-static void usage(char *name)
+static void usage(const char *name)
 {
     fprintf(stderr, "Usage: %s [-hv] file...\n", name);
 }
@@ -237,7 +237,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
-static void print_file(char *filename)
+static void print_file(const char *filename)
 {
     int fd;
     struct stat statbuf;
@@ -321,7 +321,7 @@ static void print_file(char *filename)
     free(buf);
 }
 
-static void print_elf_header(Elf32_Ehdr *e)
+static void print_elf_header(const Elf32_Ehdr *e)
 {
     printf("ELF Header\n"
 	   "  Header Size: %u\n"
@@ -342,7 +342,7 @@ static void print_elf_header(Elf32_Ehdr *e)
 	   e->e_shstrndx);
 }
 
-static Elf32_Shdr *section_header(Elf32_Ehdr *e, unsigned int s)
+static Elf32_Shdr *section_header(const Elf32_Ehdr *e, unsigned int s)
 {
     if (s >= e->e_shnum) {
 	fprintf(stderr, "Illegal section number %u\n", s);
@@ -351,18 +351,18 @@ static Elf32_Shdr *section_header(Elf32_Ehdr *e, unsigned int s)
     return (Elf32_Shdr *)((char *)e + e->e_shoff) + s;
 }
 
-static void *section_data(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void *section_data(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 {
     return (char *)e + shp->sh_offset;
 }
 
-static char *section_name(Elf32_Ehdr *e, unsigned int s)
+static char *section_name(const Elf32_Ehdr *e, unsigned int s)
 {
     char *strtab = section_data(e, section_header(e, e->e_shstrndx));
     return strtab + section_header(e, s)->sh_name;
 }
 
-static Elf32_Phdr *program_header(Elf32_Ehdr *e, unsigned int p)
+static Elf32_Phdr *program_header(const Elf32_Ehdr *e, unsigned int p)
 {
     if (p >= e->e_phnum) {
 	fprintf(stderr, "Illegal program header number %u\n", p);
@@ -371,7 +371,7 @@ static Elf32_Phdr *program_header(Elf32_Ehdr *e, unsigned int p)
     return (Elf32_Phdr *)((char *)e + e->e_phoff) + p;
 }
 
-static void print_section_header_table(Elf32_Ehdr *e)
+static void print_section_header_table(const Elf32_Ehdr *e)
 {
     unsigned int section;
 
@@ -380,7 +380,7 @@ static void print_section_header_table(Elf32_Ehdr *e)
 	   "Offset  Size    Address  Link Info Align Flags Name\n");
 
     for (section = 0; section < e->e_shnum; section++) {
-	Elf32_Shdr *shp = section_header(e, section);
+	const Elf32_Shdr *shp = section_header(e, section);
 	printf("%2u  %-8s  %06x  %06x  %08x  %2u   %2u   %2u   %04x  %-16s\n",
 	       section, section_type_name(shp->sh_type),
 	       shp->sh_offset, shp->sh_size,
@@ -391,9 +391,9 @@ static void print_section_header_table(Elf32_Ehdr *e)
     }
 }
 
-static void print_section(Elf32_Ehdr *e, unsigned int section)
+static void print_section(const Elf32_Ehdr *e, unsigned int section)
 {
-    Elf32_Shdr *shp = section_header(e, section);
+    const Elf32_Shdr *shp = section_header(e, section);
 
     if (section >= e->e_shnum)
 	return;
@@ -441,12 +441,12 @@ static char *const symbol_type[] = {
     STT(FILE),
 };
 
-static void print_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void print_symtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 {
-    Elf32_Sym *p, *symtab  = section_data(e, shp);
-    Elf32_Shdr    *strtabh = section_header(e, shp->sh_link);
-    char          *strtab  = section_data(e, strtabh);
-    unsigned int   nsyms   = shp->sh_size / shp->sh_entsize;
+    const Elf32_Sym *p, *symtab  = section_data(e, shp);
+    const Elf32_Shdr    *strtabh = section_header(e, shp->sh_link);
+    const char          *strtab  = section_data(e, strtabh);
+    unsigned int         nsyms   = shp->sh_size / shp->sh_entsize;
 
     for (p = symtab; p < symtab + nsyms; p++) {
 	printf("%4td: %-24s 0x%08x %4u %-6s %-7s %-10s\n",
@@ -463,17 +463,17 @@ static void print_symtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void print_relocation(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 {
-    Elf32_Shdr *symtabh = section_header(e, shp->sh_link);
-    Elf32_Sym  *symtab  = section_data(e, symtabh);
-    Elf32_Shdr *strtabh = section_header(e, symtabh->sh_link);
-    char       *strtab  = section_data(e, strtabh);
-    unsigned int nrels  = shp->sh_size / shp->sh_entsize;
+    const Elf32_Shdr *symtabh = section_header(e, shp->sh_link);
+    const Elf32_Sym  *symtab  = section_data(e, symtabh);
+    const Elf32_Shdr *strtabh = section_header(e, symtabh->sh_link);
+    const char       *strtab  = section_data(e, strtabh);
+    unsigned int      nrels   = shp->sh_size / shp->sh_entsize;
 
     switch (shp->sh_type) {
     case SHT_REL: {
-	Elf32_Rel *p, *rel = section_data(e, shp);
+	const Elf32_Rel *p, *rel = section_data(e, shp);
 	printf("Address   Type            Symbol\n");
 	for (p = rel; p < rel + nrels; p++) {
 	    unsigned int sym  = ELF32_R_SYM(p->r_info);
@@ -486,7 +486,7 @@ static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	break;
     }
     case SHT_RELA: {
-	Elf32_Rela *p, *rel = section_data(e, shp);
+	const Elf32_Rela *p, *rel = section_data(e, shp);
 	printf("Address   Type            Addend    Symbol\n");
 	for (p = rel; p < rel + nrels; p++) {
 	    unsigned int sym  = ELF32_R_SYM(p->r_info);
@@ -501,18 +501,18 @@ static void print_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-static void print_strtab(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void print_strtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 {
-    char *p, *start = section_data(e, shp);
+    const char *p, *start = section_data(e, shp);
     unsigned int size = shp->sh_size;
 
     for (p = start; p < start + size; p += strlen(p) + 1)
 	printf("%4td: \"%s\"\n", p - start, p);
 }
 
-static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void print_dynamic(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 {
-    Elf32_Dyn *p, *dyn = section_data(e, shp);
+    const Elf32_Dyn *p, *dyn = section_data(e, shp);
     unsigned int ndyns = shp->sh_size / shp->sh_entsize;
     Elf32_Addr symtab = 0, strtab = 0;
 
@@ -574,16 +574,16 @@ static void print_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-static void print_other(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void print_other(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 {
     dump(section_data(e, shp), shp->sh_size);
 }
 
 #define BYTES_PER_LINE 16
 
-static void dump(void *s, size_t size)
+static void dump(const void *s, size_t size)
 {
-    unsigned char *p, *start = s;
+    const unsigned char *p, *start = s;
     int nbytes, i;
 
     for (p = start; size > 0; p += nbytes, size -= nbytes) {
@@ -642,7 +642,7 @@ static char *ph_type_name(unsigned int type)
     }
 }
 
-static void print_program_header_table(Elf32_Ehdr *e)
+static void print_program_header_table(const Elf32_Ehdr *e)
 {
     unsigned int prg_header;
 
