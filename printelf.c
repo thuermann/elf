@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.46 2014/02/11 01:00:54 urs Exp $
+ * $Id: printelf.c,v 1.47 2014/02/11 01:01:04 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -376,12 +376,12 @@ static void print_section_header_table(const Elf32_Ehdr *e)
     unsigned int section;
 
     printf("Section Header Table\n"
-	   " #  Type      "
+	   " #  Type        "
 	   "Offset  Size    Address  Link Info Align Flags Name\n");
 
     for (section = 0; section < e->e_shnum; section++) {
 	const Elf32_Shdr *shp = section_header(e, section);
-	printf("%2u  %-8s  %06x  %06x  %08x  %2u   %2u   %2u   %04x  %-16s\n",
+	printf("%2u  %-10s  %06x  %06x  %08x  %2u   %2u   %2u   %04x  %s\n",
 	       section, section_type_name(shp->sh_type),
 	       shp->sh_offset, shp->sh_size,
 	       shp->sh_addr, shp->sh_link, shp->sh_info,
@@ -449,7 +449,7 @@ static void print_symtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
     unsigned int         nsyms   = shp->sh_size / shp->sh_entsize;
 
     for (p = symtab; p < symtab + nsyms; p++) {
-	printf("%4td: %-24s 0x%08x %4u %-6s %-7s %-10s\n",
+	printf("%4td: %-24s 0x%08x %4u %-6s %-7s %s\n",
 	       p - symtab,
 	       strtab + p->st_name,
 	       p->st_value, p->st_size,
@@ -478,7 +478,7 @@ static void print_relocation(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 	for (p = rel; p < rel + nrels; p++) {
 	    unsigned int sym  = ELF32_R_SYM(p->r_info);
 	    unsigned int type = ELF32_R_TYPE(p->r_info);
-	    printf("%08x  %-14s  %2u(%s)\n",
+	    printf("%08x  %-22s  %2u(%s)\n",
 		   p->r_offset, reloc_type_name(type), sym,
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
@@ -491,7 +491,7 @@ static void print_relocation(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 	for (p = rel; p < rel + nrels; p++) {
 	    unsigned int sym  = ELF32_R_SYM(p->r_info);
 	    unsigned int type = ELF32_R_TYPE(p->r_info);
-	    printf("%08x  %-14s  %08x  %2u(%s)\n",
+	    printf("%08x  %-22s  %08x  %2u(%s)\n",
 		   p->r_offset, reloc_type_name(type), p->r_addend, sym,
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
@@ -647,12 +647,12 @@ static void print_program_header_table(const Elf32_Ehdr *e)
     unsigned int prg_header;
 
     printf("Program Header Table\n"
-	   "    Type      Offset  Filesz  Vaddr     Paddr     Memsz   "
+	   "    Type        Offset  Filesz  Vaddr     Paddr     Memsz   "
 	   "Align   Flags\n");
 
     for (prg_header = 0; prg_header < e->e_phnum; prg_header++) {
 	Elf32_Phdr *php = program_header(e, prg_header);
-	printf("    %-8s  %06x  %06x  %08x  %08x  %06x  %06x  %06x\n",
+	printf("    %-10s  %06x  %06x  %08x  %08x  %06x  %06x  %06x\n",
 	       ph_type_name(php->p_type),
 	       php->p_offset, php->p_filesz,
 	       php->p_vaddr, php->p_paddr, php->p_memsz,
