@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.45 2014/02/11 01:00:44 urs Exp $
+ * $Id: printelf.c,v 1.46 2014/02/11 01:00:54 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -455,10 +455,10 @@ static void print_symtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 	       p->st_value, p->st_size,
 	       symbol_bind[ELF32_ST_BIND(p->st_info)],
 	       symbol_type[ELF32_ST_TYPE(p->st_info)],
-	       p->st_shndx == SHN_UNDEF ? "UNDEF" :
-	       (p->st_shndx == SHN_ABS ? "ABS" :
-		(p->st_shndx == SHN_COMMON ? "COMMON" :
-		 section_name(e, p->st_shndx)))
+	       p->st_shndx == SHN_UNDEF  ? "UNDEF" :
+	       p->st_shndx == SHN_ABS    ? "ABS" :
+	       p->st_shndx == SHN_COMMON ? "COMMON" :
+	       section_name(e, p->st_shndx)
 	    );
     }
 }
