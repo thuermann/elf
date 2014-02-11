@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.48 2014/02/11 01:01:14 urs Exp $
+ * $Id: printelf.c,v 1.49 2014/02/11 01:01:24 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -25,11 +25,11 @@ static void print_program_header_table(const Elf32_Ehdr *e);
 static void print_section_header_table(const Elf32_Ehdr *e);
 
 static void print_section(const Elf32_Ehdr *e, unsigned int section);
-static void print_symtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
-static void print_relocation(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
-static void print_strtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
-static void print_dynamic(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
-static void print_other(const Elf32_Ehdr *e, const Elf32_Shdr *shp);
+static void print_symtab(const Elf32_Ehdr *e, const Elf32_Shdr *sh);
+static void print_relocation(const Elf32_Ehdr *e, const Elf32_Shdr *sh);
+static void print_strtab(const Elf32_Ehdr *e, const Elf32_Shdr *sh);
+static void print_dynamic(const Elf32_Ehdr *e, const Elf32_Shdr *sh);
+static void print_other(const Elf32_Ehdr *e, const Elf32_Shdr *sh);
 
 static char *ph_type_name(unsigned int type);
 static char *section_type_name(unsigned int type);
@@ -42,11 +42,11 @@ static size_t min(size_t a, size_t b);
 
 static void conv(Elf32_Ehdr *e);
 static void conv_elfheader(Elf32_Ehdr *e);
-static void conv_programheader(Elf32_Ehdr *e, Elf32_Phdr *php);
-static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp);
-static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp);
-static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp);
-static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp);
+static void conv_programheader(Elf32_Ehdr *e, Elf32_Phdr *ph);
+static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *sh);
+static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *sh);
+static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *sh);
+static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *sh);
 
 int main(int argc, char **argv)
 {
@@ -242,7 +242,7 @@ static char *const reloc_types_68K[] = {
 };
 #undef R
 
-static char *const *reloc_type;
+static char *const *reloc_types;
 static unsigned int nrtypes;
 
 static void print_file(const char *filename)
@@ -288,28 +288,28 @@ static void print_file(const char *filename)
 
     switch (elf_header->e_machine) {
     case EM_386:
-	reloc_type = reloc_types_386;
-	nrtypes    = ASIZE(reloc_types_386);
+	reloc_types = reloc_types_386;
+	nrtypes     = ASIZE(reloc_types_386);
 	break;
     case EM_X86_64:
-	reloc_type = reloc_types_X86_64;
-	nrtypes    = ASIZE(reloc_types_X86_64);
+	reloc_types = reloc_types_X86_64;
+	nrtypes     = ASIZE(reloc_types_X86_64);
 	break;
     case EM_SPARC:
-	reloc_type = reloc_types_SPARC;
-	nrtypes    = ASIZE(reloc_types_SPARC);
+	reloc_types = reloc_types_SPARC;
+	nrtypes     = ASIZE(reloc_types_SPARC);
 	break;
     case EM_PPC:
-	reloc_type = reloc_types_PPC;
-	nrtypes    = ASIZE(reloc_types_PPC);
+	reloc_types = reloc_types_PPC;
+	nrtypes     = ASIZE(reloc_types_PPC);
 	break;
     case EM_68K:
-	reloc_type = reloc_types_68K;
-	nrtypes    = ASIZE(reloc_types_68K);
+	reloc_types = reloc_types_68K;
+	nrtypes     = ASIZE(reloc_types_68K);
 	break;
     default:
-	reloc_type = NULL;
-	nrtypes    = 0;
+	reloc_types = NULL;
+	nrtypes     = 0;
 	break;
     }
 
@@ -368,9 +368,9 @@ static Elf32_Shdr *section_header(const Elf32_Ehdr *e, unsigned int s)
     return (Elf32_Shdr *)((char *)e + e->e_shoff) + s;
 }
 
-static void *section_data(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
+static void *section_data(const Elf32_Ehdr *e, const Elf32_Shdr *sh)
 {
-    return (char *)e + shp->sh_offset;
+    return (char *)e + sh->sh_offset;
 }
 
 static char *section_name(const Elf32_Ehdr *e, unsigned int s)
@@ -388,12 +388,12 @@ static void print_program_header_table(const Elf32_Ehdr *e)
 	   "Align   Flags\n");
 
     for (prg_header = 0; prg_header < e->e_phnum; prg_header++) {
-	Elf32_Phdr *php = program_header(e, prg_header);
+	Elf32_Phdr *ph = program_header(e, prg_header);
 	printf("    %-10s  %06x  %06x  %08x  %08x  %06x  %06x  %06x\n",
-	       ph_type_name(php->p_type),
-	       php->p_offset, php->p_filesz,
-	       php->p_vaddr, php->p_paddr, php->p_memsz,
-	       php->p_align, php->p_flags);
+	       ph_type_name(ph->p_type),
+	       ph->p_offset, ph->p_filesz,
+	       ph->p_vaddr, ph->p_paddr, ph->p_memsz,
+	       ph->p_align, ph->p_flags);
     }
 }
 
@@ -406,12 +406,12 @@ static void print_section_header_table(const Elf32_Ehdr *e)
 	   "Offset  Size    Address  Link Info Align Flags Name\n");
 
     for (section = 0; section < e->e_shnum; section++) {
-	const Elf32_Shdr *shp = section_header(e, section);
+	const Elf32_Shdr *sh = section_header(e, section);
 	printf("%2u  %-10s  %06x  %06x  %08x  %2u   %2u   %2u   %04x  %s\n",
-	       section, section_type_name(shp->sh_type),
-	       shp->sh_offset, shp->sh_size,
-	       shp->sh_addr, shp->sh_link, shp->sh_info,
-	       shp->sh_addralign, shp->sh_flags,
+	       section, section_type_name(sh->sh_type),
+	       sh->sh_offset, sh->sh_size,
+	       sh->sh_addr, sh->sh_link, sh->sh_info,
+	       sh->sh_addralign, sh->sh_flags,
 	       section_name(e, section)
 	    );
     }
@@ -419,95 +419,96 @@ static void print_section_header_table(const Elf32_Ehdr *e)
 
 static void print_section(const Elf32_Ehdr *e, unsigned int section)
 {
-    const Elf32_Shdr *shp = section_header(e, section);
+    const Elf32_Shdr *sh = section_header(e, section);
 
     if (section >= e->e_shnum)
 	return;
 
-    if (shp->sh_type == SHT_NOBITS)
+    if (sh->sh_type == SHT_NOBITS)
 	return;
-    if (shp->sh_size == 0)
+    if (sh->sh_size == 0)
 	return;
 
     printf("section: %u  %-10s %-10s %2u %2u 0x%08x %4u\n",
-	   section, section_name(e, section), section_type_name(shp->sh_type),
-	   shp->sh_link, shp->sh_info, shp->sh_addr, shp->sh_size);
+	   section, section_name(e, section), section_type_name(sh->sh_type),
+	   sh->sh_link, sh->sh_info, sh->sh_addr, sh->sh_size);
 
-    switch (shp->sh_type) {
+    switch (sh->sh_type) {
     case SHT_STRTAB:
-	print_strtab(e, shp);
+	print_strtab(e, sh);
 	break;
     case SHT_SYMTAB:
     case SHT_DYNSYM:
-	print_symtab(e, shp);
+	print_symtab(e, sh);
 	break;
     case SHT_REL:
     case SHT_RELA:
-	print_relocation(e, shp);
+	print_relocation(e, sh);
 	break;
     case SHT_DYNAMIC:
-	print_dynamic(e, shp);
+	print_dynamic(e, sh);
 	break;
     case SHT_HASH:
 	break;
     default:
-	print_other(e, shp);
+	print_other(e, sh);
 	break;
     }
 }
 
-static void print_symtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
+static void print_symtab(const Elf32_Ehdr *e, const Elf32_Shdr *sh)
 {
-    const Elf32_Sym *p, *symtab  = section_data(e, shp);
-    const Elf32_Shdr    *strtabh = section_header(e, shp->sh_link);
-    const char          *strtab  = section_data(e, strtabh);
-    unsigned int         nsyms   = shp->sh_size / shp->sh_entsize;
+    unsigned int      nsyms   = sh->sh_size / sh->sh_entsize;
+    const Elf32_Sym  *symtab  = section_data(e, sh);
+    const Elf32_Shdr *strtabh = section_header(e, sh->sh_link);
+    const char       *strtab  = section_data(e, strtabh);
+    const Elf32_Sym  *sym;
 
-    for (p = symtab; p < symtab + nsyms; p++) {
+    for (sym = symtab; sym < symtab + nsyms; sym++) {
 	printf("%4td: %-24s 0x%08x %4u %-6s %-7s %s\n",
-	       p - symtab,
-	       strtab + p->st_name,
-	       p->st_value, p->st_size,
-	       symbol_bind[ELF32_ST_BIND(p->st_info)],
-	       symbol_type[ELF32_ST_TYPE(p->st_info)],
-	       p->st_shndx == SHN_UNDEF  ? "UNDEF" :
-	       p->st_shndx == SHN_ABS    ? "ABS" :
-	       p->st_shndx == SHN_COMMON ? "COMMON" :
-	       section_name(e, p->st_shndx)
+	       sym - symtab,
+	       strtab + sym->st_name,
+	       sym->st_value, sym->st_size,
+	       symbol_bind[ELF32_ST_BIND(sym->st_info)],
+	       symbol_type[ELF32_ST_TYPE(sym->st_info)],
+	       sym->st_shndx == SHN_UNDEF  ? "UNDEF" :
+	       sym->st_shndx == SHN_ABS    ? "ABS" :
+	       sym->st_shndx == SHN_COMMON ? "COMMON" :
+	       section_name(e, sym->st_shndx)
 	    );
     }
 }
 
-static void print_relocation(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
+static void print_relocation(const Elf32_Ehdr *e, const Elf32_Shdr *sh)
 {
-    const Elf32_Shdr *symtabh = section_header(e, shp->sh_link);
+    unsigned int      nrels   = sh->sh_size / sh->sh_entsize;
+    const Elf32_Shdr *symtabh = section_header(e, sh->sh_link);
     const Elf32_Sym  *symtab  = section_data(e, symtabh);
     const Elf32_Shdr *strtabh = section_header(e, symtabh->sh_link);
     const char       *strtab  = section_data(e, strtabh);
-    unsigned int      nrels   = shp->sh_size / shp->sh_entsize;
 
-    switch (shp->sh_type) {
+    switch (sh->sh_type) {
     case SHT_REL: {
-	const Elf32_Rel *p, *rel = section_data(e, shp);
+	const Elf32_Rel *rel, *reltab = section_data(e, sh);
 	printf("Address   Type            Symbol\n");
-	for (p = rel; p < rel + nrels; p++) {
-	    unsigned int sym  = ELF32_R_SYM(p->r_info);
-	    unsigned int type = ELF32_R_TYPE(p->r_info);
+	for (rel = reltab; rel < reltab + nrels; rel++) {
+	    unsigned int sym  = ELF32_R_SYM(rel->r_info);
+	    unsigned int type = ELF32_R_TYPE(rel->r_info);
 	    printf("%08x  %-22s  %2u(%s)\n",
-		   p->r_offset, reloc_type_name(type), sym,
+		   rel->r_offset, reloc_type_name(type), sym,
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
 	}
 	break;
     }
     case SHT_RELA: {
-	const Elf32_Rela *p, *rel = section_data(e, shp);
+	const Elf32_Rela *rel, *reltab = section_data(e, sh);
 	printf("Address   Type            Addend    Symbol\n");
-	for (p = rel; p < rel + nrels; p++) {
-	    unsigned int sym  = ELF32_R_SYM(p->r_info);
-	    unsigned int type = ELF32_R_TYPE(p->r_info);
+	for (rel = reltab; rel < reltab + nrels; rel++) {
+	    unsigned int sym  = ELF32_R_SYM(rel->r_info);
+	    unsigned int type = ELF32_R_TYPE(rel->r_info);
 	    printf("%08x  %-22s  %08x  %2u(%s)\n",
-		   p->r_offset, reloc_type_name(type), p->r_addend, sym,
+		   rel->r_offset, reloc_type_name(type), rel->r_addend, sym,
 		   sym == STN_UNDEF ? "UNDEF" : strtab + symtab[sym].st_name
 		);
 	}
@@ -516,28 +517,28 @@ static void print_relocation(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
     }
 }
 
-static void print_strtab(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
+static void print_strtab(const Elf32_Ehdr *e, const Elf32_Shdr *sh)
 {
-    const char *p, *start = section_data(e, shp);
-    unsigned int size = shp->sh_size;
+    unsigned int size = sh->sh_size;
+    const char *s, *strtab = section_data(e, sh);
 
-    for (p = start; p < start + size; p += strlen(p) + 1)
-	printf("%4td: \"%s\"\n", p - start, p);
+    for (s = strtab; s < strtab + size; s += strlen(s) + 1)
+	printf("%4td: \"%s\"\n", s - strtab, s);
 }
 
-static void print_dynamic(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
+static void print_dynamic(const Elf32_Ehdr *e, const Elf32_Shdr *sh)
 {
-    const Elf32_Dyn *p, *dyn = section_data(e, shp);
-    unsigned int ndyns = shp->sh_size / shp->sh_entsize;
+    unsigned int ndyns = sh->sh_size / sh->sh_entsize;
+    const Elf32_Dyn *dyn, *dyntab = section_data(e, sh);
     Elf32_Addr symtab = 0, strtab = 0;
 
-    for (p = dyn; p < dyn + ndyns; p++) {
-	switch (p->d_tag) {
+    for (dyn = dyntab; dyn < dyntab + ndyns; dyn++) {
+	switch (dyn->d_tag) {
 	case DT_SYMTAB:
-	    symtab = p->d_un.d_ptr;
+	    symtab = dyn->d_un.d_ptr;
 	    break;
 	case DT_STRTAB:
-	    strtab = p->d_un.d_ptr;
+	    strtab = dyn->d_un.d_ptr;
 	    break;
 	}
     }
@@ -546,14 +547,14 @@ static void print_dynamic(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 		"No DT_SYMTAB or DT_STRTAB entry in DYNAMIC section\n");
 	return;
     }
-    for (p = dyn; p < dyn + ndyns; p++) {
-	unsigned int tag = p->d_tag;
+    for (dyn = dyntab; dyn < dyntab + ndyns; dyn++) {
+	unsigned int tag = dyn->d_tag;
 	char *tagname = tag < NTAGS ? tag_name[tag] : "?";
 	switch (tag) {
 	case DT_NEEDED:
 	case DT_SONAME:
 	case DT_RPATH:
-	    printf("%-8s  %u (0x%08x)\n", tagname, p->d_un.d_val, strtab);
+	    printf("%-8s  %u (0x%08x)\n", tagname, dyn->d_un.d_val, strtab);
 	    break;
 	case DT_PLTRELSZ:
 	case DT_RELASZ:
@@ -563,7 +564,7 @@ static void print_dynamic(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 	case DT_PLTREL:
 	case DT_STRSZ:
 	case DT_SYMENT:
-	    printf("%-8s  %u\n", tagname, p->d_un.d_val);
+	    printf("%-8s  %u\n", tagname, dyn->d_un.d_val);
 	    break;
 	case DT_INIT:
 	case DT_FINI:
@@ -575,7 +576,7 @@ static void print_dynamic(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
 	case DT_STRTAB:
 	case DT_JMPREL:
 	case DT_DEBUG:
-	    printf("%-8s  %08x\n", tagname, p->d_un.d_ptr);
+	    printf("%-8s  %08x\n", tagname, dyn->d_un.d_ptr);
 	    break;
 	case DT_NULL:
 	case DT_SYMBOLIC:
@@ -589,9 +590,9 @@ static void print_dynamic(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
     }
 }
 
-static void print_other(const Elf32_Ehdr *e, const Elf32_Shdr *shp)
+static void print_other(const Elf32_Ehdr *e, const Elf32_Shdr *sh)
 {
-    dump(section_data(e, shp), shp->sh_size);
+    dump(section_data(e, sh), sh->sh_size);
 }
 
 static char *ph_type_name(unsigned int type)
@@ -623,7 +624,7 @@ static char *reloc_type_name(unsigned int type)
     static char s[16];
 
     if (type < nrtypes)
-	return reloc_type[type];
+	return reloc_types[type];
     else {
 	sprintf(s, "%u", type);
 	return s;
@@ -749,50 +750,50 @@ static void conv_elfheader(Elf32_Ehdr *e)
     conv_s(&e->e_shstrndx);
 }
 
-static void conv_programheader(Elf32_Ehdr *e, Elf32_Phdr *php)
+static void conv_programheader(Elf32_Ehdr *e, Elf32_Phdr *ph)
 {
-    conv_l(&php->p_type);
-    conv_l(&php->p_offset);
-    conv_l(&php->p_vaddr);
-    conv_l(&php->p_paddr);
-    conv_l(&php->p_filesz);
-    conv_l(&php->p_memsz);
-    conv_l(&php->p_flags);
-    conv_l(&php->p_align);
+    conv_l(&ph->p_type);
+    conv_l(&ph->p_offset);
+    conv_l(&ph->p_vaddr);
+    conv_l(&ph->p_paddr);
+    conv_l(&ph->p_filesz);
+    conv_l(&ph->p_memsz);
+    conv_l(&ph->p_flags);
+    conv_l(&ph->p_align);
 }
 
-static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void conv_sectionheader(Elf32_Ehdr *e, Elf32_Shdr *sh)
 {
-    conv_l(&shp->sh_name);
-    conv_l(&shp->sh_type);
-    conv_l(&shp->sh_flags);
-    conv_l(&shp->sh_addr);
-    conv_l(&shp->sh_offset);
-    conv_l(&shp->sh_size);
-    conv_l(&shp->sh_link);
-    conv_l(&shp->sh_info);
-    conv_l(&shp->sh_addralign);
-    conv_l(&shp->sh_entsize);
+    conv_l(&sh->sh_name);
+    conv_l(&sh->sh_type);
+    conv_l(&sh->sh_flags);
+    conv_l(&sh->sh_addr);
+    conv_l(&sh->sh_offset);
+    conv_l(&sh->sh_size);
+    conv_l(&sh->sh_link);
+    conv_l(&sh->sh_info);
+    conv_l(&sh->sh_addralign);
+    conv_l(&sh->sh_entsize);
 
-    switch (shp->sh_type) {
+    switch (sh->sh_type) {
     case SHT_SYMTAB:
     case SHT_DYNSYM:
-	conv_symboltable(e, shp);
+	conv_symboltable(e, sh);
 	break;
     case SHT_REL:
     case SHT_RELA:
-	conv_relocation(e, shp);
+	conv_relocation(e, sh);
 	break;
     case SHT_DYNAMIC:
-	conv_dynamic(e, shp);
+	conv_dynamic(e, sh);
 	break;
     }
 }
 
-static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *sh)
 {
-    Elf32_Sym *p, *symtab = section_data(e, shp);
-    unsigned int nsyms = shp->sh_size / shp->sh_entsize;
+    Elf32_Sym *p, *symtab = section_data(e, sh);
+    unsigned int nsyms = sh->sh_size / sh->sh_entsize;
 
     for (p = symtab; p < symtab + nsyms; p++) {
 	conv_l(&p->st_name);
@@ -802,13 +803,13 @@ static void conv_symboltable(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *sh)
 {
-    unsigned int nrels = shp->sh_size / shp->sh_entsize;
+    unsigned int nrels = sh->sh_size / sh->sh_entsize;
 
-    switch (shp->sh_type) {
+    switch (sh->sh_type) {
     case SHT_REL: {
-	Elf32_Rel *p, *rel = section_data(e, shp);
+	Elf32_Rel *p, *rel = section_data(e, sh);
 	for (p = rel; p < rel + nrels; p++) {
 	    conv_l(&p->r_offset);
 	    conv_l(&p->r_info);
@@ -816,7 +817,7 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
 	break;
     }
     case SHT_RELA: {
-	Elf32_Rela *p, *rel = section_data(e, shp);
+	Elf32_Rela *p, *rel = section_data(e, sh);
 	for (p = rel; p < rel + nrels; p++) {
 	    conv_l(&p->r_offset);
 	    conv_l(&p->r_info);
@@ -827,13 +828,13 @@ static void conv_relocation(Elf32_Ehdr *e, Elf32_Shdr *shp)
     }
 }
 
-static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *shp)
+static void conv_dynamic(Elf32_Ehdr *e, Elf32_Shdr *sh)
 {
-    unsigned int ndyn = shp->sh_size / shp->sh_entsize;
-    Elf32_Dyn *p, *dyn = section_data(e, shp);
+    unsigned int ndyn = sh->sh_size / sh->sh_entsize;
+    Elf32_Dyn *dyn, *dyntab = section_data(e, sh);
 
-    for (p = dyn; p < dyn + ndyn; p++) {
-	conv_l(&p->d_tag);
-	conv_l((Elf32_Word *)&p->d_un);
+    for (dyn = dyntab; dyn < dyntab + ndyn; dyn++) {
+	conv_l(&dyn->d_tag);
+	conv_l(&dyn->d_un.d_val);
     }
 }
