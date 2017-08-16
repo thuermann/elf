@@ -1,5 +1,5 @@
 /*
- * $Id: printelf.c,v 1.51 2014/02/11 10:00:59 urs Exp $
+ * $Id: printelf.c,v 1.52 2017/08/16 23:42:30 urs Exp $
  *
  * Read an ELF file and print it to stdout.
  */
@@ -249,6 +249,18 @@ static char *const reloc_types_68K[] = {
     R(GLOB_DAT), R(JMP_SLOT), R(RELATIVE),
 };
 #undef R
+
+static const struct {
+    unsigned int machine;
+    char *const *reloc_types;
+    unsigned int nrtypes;
+} reloc_tab[] = {
+    { EM_386,    reloc_types_386,    ASIZE(reloc_types_386) },
+    { EM_X86_64, reloc_types_X86_64, ASIZE(reloc_types_X86_64) },
+    { EM_SPARC,  reloc_types_SPARC,  ASIZE(reloc_types_SPARC) },
+    { EM_PPC,    reloc_types_PPC,    ASIZE(reloc_types_PPC) },
+    { EM_68K,    reloc_types_68K,    ASIZE(reloc_types_68K) },
+};
 
 static char *const *reloc_types;
 static unsigned int nrtypes;
@@ -617,32 +629,16 @@ static char *reloc_type_name(unsigned int type)
 
 static void set_relocation(unsigned int machine)
 {
-    switch (machine) {
-    case EM_386:
-	reloc_types = reloc_types_386;
-	nrtypes     = ASIZE(reloc_types_386);
-	break;
-    case EM_X86_64:
-	reloc_types = reloc_types_X86_64;
-	nrtypes     = ASIZE(reloc_types_X86_64);
-	break;
-    case EM_SPARC:
-	reloc_types = reloc_types_SPARC;
-	nrtypes     = ASIZE(reloc_types_SPARC);
-	break;
-    case EM_PPC:
-	reloc_types = reloc_types_PPC;
-	nrtypes     = ASIZE(reloc_types_PPC);
-	break;
-    case EM_68K:
-	reloc_types = reloc_types_68K;
-	nrtypes     = ASIZE(reloc_types_68K);
-	break;
-    default:
-	reloc_types = NULL;
-	nrtypes     = 0;
-	break;
-    }
+    unsigned int i;
+
+    reloc_types = NULL;
+    nrtypes     = 0;
+    for (i = 0; i < ASIZE(reloc_tab); i++)
+	if (machine == reloc_tab[i].machine) {
+	    reloc_types = reloc_tab[i].reloc_types;
+	    nrtypes     = reloc_tab[i].nrtypes;
+	    break;
+	}
 }
 
 static char *load_file(const char *filename)
